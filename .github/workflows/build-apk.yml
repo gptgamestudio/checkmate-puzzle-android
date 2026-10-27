@@ -28,6 +28,10 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Generate Debug Keystore
+        run: |
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Build Debug APK
         run: gradle assembleDebug --stacktrace
 
@@ -38,12 +42,19 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
         with:
+          tag_name: v1.0.0
+          name: Checkmate Chess Puzzle v1.0.0
           files: app/build/outputs/apk/debug/app-debug.apk
-          name: Release ${{ github.ref_name }}
+          body: |
+            ## 🎮 Checkmate Chess Puzzle v1.0.0
+            - 2D Landscape Mobile Checkmate Game
+            - 3D Glossy Bubble Pieces
+            - Winner & Loser Character Reactions ("Manalo at Matalo")
+            - AdMob Banners & Checkmate Interstitial Ads
+            - Download `app-debug.apk` below and install directly on your Android device!
           draft: false
           prerelease: false
-          generate_release_notes: true
