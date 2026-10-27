@@ -1,0 +1,6 @@
+{
+  "name": "Chess Puzzle",
+  "description": "Dark-themed 2D Landscape Chess Puzzle & Checkmate Engine with full rule verification and mate puzzles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
