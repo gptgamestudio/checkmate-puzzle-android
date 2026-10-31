@@ -9,7 +9,8 @@ service cloud.firestore {
     // ONLY OWNER analynlandingin77@gmail.com OR VERIFIED ADMIN HAS FULL APP & ADMIN ACCESS
     function isAppOwner() {
       return isAuthenticated() && (
-        (request.auth.token.email == "analynlandingin77@gmail.com" && request.auth.token.email_verified == true) ||
+        (request.auth.token.email == "analynlandingin77@gmail.com" &&
+          (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com')) ||
         request.auth.token.admin == true
       );
     }
