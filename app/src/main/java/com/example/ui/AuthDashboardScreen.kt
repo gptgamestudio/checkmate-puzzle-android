@@ -64,7 +64,7 @@ fun AuthDashboardScreen(
     var isSignUpTab by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf(currentSession.email) }
     var username by remember { mutableStateOf(currentSession.username) }
-    var password by remember { mutableStateOf("masterchess2026") }
+    var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
 
     val bgGradient = Brush.verticalGradient(
