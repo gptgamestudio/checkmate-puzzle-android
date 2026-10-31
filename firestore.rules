@@ -62,7 +62,7 @@ service cloud.firestore {
     // 2. USER PROGRESS & LEADERBOARD
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isUserSelf(userId) && isValidUser(request.resource.data, userId);
+      allow create: if isUserSelf(userId) && isValidUser(request.resource.data, userId) && !('role' in request.resource.data);
       // Prevent users from elevating roles or modifying other users' data
       allow update: if (isUserSelf(userId) && isValidUser(request.resource.data, userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys())) || isAppOwner();
       allow delete: if isUserSelf(userId) || isAppOwner();
