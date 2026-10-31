@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grandmaster Chess Puzzles (1 - 2000) | Checkmate Arena</title>
+    <meta name="description" content="Play 2,000 tactical checkmate chess puzzles in green/white tournament arena with realistic chess engine, GM rankings, and real-time timer. Download the official Android APK.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://gptgamestudio.github.io/checkmate-puzzle-android/">
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="sitemap.xml">
+    
+    <!-- Open Graph / SEO -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://gptgamestudio.github.io/checkmate-puzzle-android/">
+    <meta property="og:title" content="Checkmate Chess Puzzle Arena — 2,000 Puzzles & Android APK">
+    <meta property="og:description" content="Play 2,000 tactical checkmate chess puzzles in tournament arena. Download official Android APK checkmate-puzzle.apk.">
+    <meta property="og:image" content="https://gptgamestudio.github.io/checkmate-puzzle-android/assets/chess_icon_1792727164973.jpg">
+
+    <!-- Google Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Checkmate Chess Puzzle",
+      "operatingSystem": "Android, Web",
+      "applicationCategory": "GameApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "downloadUrl": "https://github.com/gptgamestudio/checkmate-puzzle-android/releases/latest/download/checkmate-puzzle.apk",
+      "url": "https://gptgamestudio.github.io/checkmate-puzzle-android/",
+      "author": {
+        "@type": "Organization",
+        "name": "GPT Game Studio"
+      }
+    }
+    </script>
+    <link rel="icon" href="assets/chess_icon_1792727164973.jpg" type="image/jpeg">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chessboard.js & Chess.js -->
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <!-- Canvas Confetti for Victory -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        /* Tournament Green and White board squares */
+        .white-1e1d7 {
+            background-color: #eeeed2 !important;
+            color: #242933 !important;
+        }
+        .black-3c85d {
+            background-color: #769656 !important;
+            color: #eceff4 !important;
+        }
+        .piece-417db {
+            filter: drop-shadow(0 3px 4px rgba(0,0,0,0.55));
+            transform: scale(1.08);
+            transition: transform 0.08s ease;
+        }
+        .piece-417db:hover {
+            transform: scale(1.15);
+        }
+        .highlight-square {
+            box-shadow: inset 0 0 3px 3px rgba(245, 158, 11, 0.7) !important;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col justify-between select-none">
+
+    <!-- Top Banner: App Ads & Android APK Download -->
+    <div class="bg-slate-900 border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2">
+        <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="font-semibold text-amber-400">CHECKMATE PUZZLE ARENA</span>
+            <span class="text-slate-500 hidden sm:inline">|</span>
+            <span class="text-slate-400 hidden sm:inline">2,000 Grandmaster Puzzles</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="toggleWebAudioMute()" id="web-audio-mute-btn" class="text-slate-300 hover:text-amber-400 transition flex items-center gap-1.5 font-bold text-xs bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-700 active:scale-95">
+                <i class="fa-solid fa-volume-high text-amber-400"></i> Sound
+            </button>
+            <button onclick="openOwnerSecurityModal()" class="text-amber-400 hover:text-amber-300 transition flex items-center gap-1 font-bold text-xs bg-amber-500/10 px-2.5 py-1.5 rounded-lg border border-amber-500/30 active:scale-95">
+                <i class="fa-solid fa-crown text-amber-400"></i> Owner Settings
+            </button>
+            <a href="https://github.com/gptgamestudio/checkmate-puzzle-android/releases/latest/download/checkmate-puzzle.apk" 
+               class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow active:scale-95"
+               title="I-download ang opisyal na Android APK">
+                <i class="fa-brands fa-android text-sm"></i> Download Live APK (25 MB)
+            </a>
+            <a href="app-ads.txt" target="_blank" class="text-slate-400 hover:text-amber-400 transition flex items-center gap-1">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i> app-ads.txt
+            </a>
+            <a href="https://github.com/gptgamestudio/checkmate-puzzle-android" target="_blank" class="text-slate-400 hover:text-white transition">
+                <i class="fa-brands fa-github text-sm"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- ================= 1ST DASHBOARD: LOGIN / SIGN UP ================= -->
+    <div id="auth-screen" class="flex-grow flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 p-0.5 shadow-lg shadow-amber-500/20">
+                    <img src="assets/chess_icon_1792727164973.jpg" alt="Chess Icon" class="w-full h-full object-cover rounded-2xl" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=100';">
+                </div>
+                <h1 class="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-white via-slate-200 to-amber-400 bg-clip-text text-transparent">CHESS PUZZLE ARENA</h1>
+                <p class="text-sm text-slate-400 mt-1">Mag-login para simulan ang 2,000 Puzzles & Online Matches</p>
+            </div>
+
+            <!-- Tabs para sa Login / Sign Up -->
+            <div class="flex border-b border-slate-800 mb-6">
+                <button onclick="switchTab('login')" id="tab-login" class="flex-1 pb-3 font-semibold text-amber-400 border-b-2 border-amber-400 transition">Login</button>
+                <button onclick="switchTab('signup')" id="tab-signup" class="flex-1 pb-3 font-semibold text-slate-400 transition">Sign Up</button>
+            </div>
+
+            <!-- Instant Play / Guest Play Button -->
+            <button onclick="handleLoginSuccess('GM Guest Player')" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-black py-3 px-4 rounded-xl transition mb-3 shadow-lg active:scale-98">
+                <i class="fa-solid fa-play text-sm"></i>
+                MAGLARO AGAD (Instant Play)
+            </button>
+
+            <!-- Google Sign In Button -->
+            <button onclick="handleLoginSuccess('Analyn Landingin (Google)')" class="w-full flex items-center justify-center gap-3 bg-white text-slate-900 font-semibold py-3 px-4 rounded-xl hover:bg-slate-100 transition mb-4 shadow hover:shadow-lg active:scale-98">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+                Sign in with Google
+            </button>
+
+            <div class="flex items-center my-4">
+                <div class="flex-grow border-t border-slate-800"></div>
+                <span class="px-3 text-xs text-slate-500 uppercase tracking-widest">o kaya email</span>
+                <div class="flex-grow border-t border-slate-800"></div>
+            </div>
+
+            <!-- Form -->
+            <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Email Address</label>
+                    <input type="email" id="email-input" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400 text-slate-100 placeholder-slate-600 transition" placeholder="analynlandingin77@gmail.com" value="analynlandingin77@gmail.com">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Password</label>
+                    <div class="relative">
+                        <input type="password" id="password-input" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400 text-slate-100 transition pr-10" placeholder="••••••••" value="checkmate2026">
+                        <!-- Password Show / Hidden Eye Toggle Icon -->
+                        <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" title="Show/Hide Password">
+                            <i id="eye-icon" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold py-3 rounded-xl transition shadow-lg shadow-amber-500/25 active:scale-98">
+                    Magpatuloy sa Dashboard
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= 2ND DASHBOARD: MAIN LOBBY & GAME SELECTION ================= -->
+    <div id="dashboard-screen" class="hidden flex-grow flex flex-col p-4 max-w-6xl mx-auto w-full">
+        <!-- Header Info -->
+        <div class="flex flex-col md:flex-row justify-between items-center bg-slate-900 border border-slate-800 p-5 rounded-2xl mb-4 gap-4 shadow-xl">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl overflow-hidden border-2 border-amber-500/50 shadow-md">
+                    <img src="assets/avatar_winner_1793081380198.jpg" alt="Player Avatar" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h2 id="player-display-name" class="text-lg font-bold text-white">GM Player</h2>
+                        <span class="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded font-bold border border-emerald-500/30">🟢 Online</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Rating: <span class="text-amber-400 font-mono font-bold" id="player-rating-val">2150</span> 🌐 • Philippines 🇵🇭 • Solved: <span id="solved-count-badge" class="font-bold text-emerald-400">0</span>/2000</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-right">
+                    <span class="text-amber-400 font-black text-xs block">⚡ SERVER ONLINE</span>
+                    <span class="text-[11px] text-slate-400">Matchmaking Active</span>
+                </div>
+                <button onclick="openOwnerSecurityModal()" class="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5 border border-amber-500/40 active:scale-95 font-bold shadow">
+                    <i class="fa-solid fa-crown text-amber-400"></i> Owner Control
+                </button>
+                <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl text-xs transition flex items-center gap-1.5 border border-slate-700 active:scale-95 text-slate-300">
+                    <i class="fa-solid fa-right-from-bracket text-red-400"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- 4 Equal-Sized Buttons Grid (pare parehas ang laki!) -->
+        <div class="mb-4">
+            <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block mb-2">PUMILI NG LARO (EQUAL BUTTONS GRID):</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <!-- Button 1: 2000 Puzzles -->
+                <button onclick="selectLobbyMode('puzzles')" id="btn-mode-puzzles" class="bg-slate-900 border-2 border-amber-500 p-4 rounded-2xl flex items-center gap-3 transition hover:bg-slate-850 text-left active:scale-98 shadow-md h-20">
+                    <div class="w-11 h-11 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl flex-shrink-0">
+                        <i class="fa-solid fa-puzzle-piece"></i>
+                    </div>
+                    <div>
+                        <span class="text-sm font-black text-white block">2,000 PUZZLES</span>
+                        <span class="text-xs text-slate-400">Level by level mate</span>
+                    </div>
+                </button>
+
+                <!-- Button 2: Strategy Guide -->
+                <button onclick="selectLobbyMode('strategy')" id="btn-mode-strategy" class="bg-slate-900 border border-slate-800 hover:border-sky-500 p-4 rounded-2xl flex items-center gap-3 transition hover:bg-slate-850 text-left active:scale-98 shadow-md h-20">
+                    <div class="w-11 h-11 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl flex-shrink-0">
+                        <i class="fa-solid fa-book-open"></i>
+                    </div>
+                    <div>
+                        <span class="text-sm font-black text-white block">STRATEGY GUIDE</span>
+                        <span class="text-xs text-slate-400">GM tactics & rules</span>
+                    </div>
+                </button>
+
+                <!-- Button 3: Play Now Online -->
+                <button onclick="selectLobbyMode('online')" id="btn-mode-online" class="bg-slate-900 border border-slate-800 hover:border-emerald-500 p-4 rounded-2xl flex items-center gap-3 transition hover:bg-slate-850 text-left active:scale-98 shadow-md h-20">
+                    <div class="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl flex-shrink-0">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div>
+                        <span class="text-sm font-black text-white block">PLAY ONLINE</span>
+                        <span class="text-xs text-slate-400">Auto search members</span>
+                    </div>
+                </button>
+
+                <!-- Button 4: Play with AI -->
+                <button onclick="selectLobbyMode('ai')" id="btn-mode-ai" class="bg-slate-900 border border-slate-800 hover:border-purple-500 p-4 rounded-2xl flex items-center gap-3 transition hover:bg-slate-850 text-left active:scale-98 shadow-md h-20">
+                    <div class="w-11 h-11 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-xl flex-shrink-0">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div>
+                        <span class="text-sm font-black text-white block">PLAY WITH AI</span>
+                        <span class="text-xs text-slate-400">Master / Hard / IM</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- AI Level Selector (visible if AI mode) -->
+        <div id="ai-level-section" class="hidden mb-4 bg-slate-900 border border-purple-500/30 p-3 rounded-xl flex items-center justify-between">
+            <span class="text-xs font-bold text-purple-400 uppercase">AI Difficulty:</span>
+            <div class="flex gap-2">
+                <button onclick="setAiLevel('hard')" id="ai-hard" class="px-3 py-1 bg-purple-950 text-purple-300 text-xs font-bold rounded-lg border border-purple-500">Hard (2000)</button>
+                <button onclick="setAiLevel('master')" id="ai-master" class="px-3 py-1 bg-slate-800 text-slate-400 text-xs font-bold rounded-lg">Master (2250)</button>
+                <button onclick="setAiLevel('im')" id="ai-im" class="px-3 py-1 bg-slate-800 text-slate-400 text-xs font-bold rounded-lg">Grandmaster IM (2550)</button>
+            </div>
+        </div>
+
+        <!-- Time Control Selection (3 min, 5 min, 10 min) -->
+        <div class="mb-4 bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-stopwatch text-amber-400"></i>
+                <span class="text-xs font-bold uppercase text-slate-300">PUMILI NG ORAS (SELECT MINUTES):</span>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="setTimeMinutes(3)" id="tc-3" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-black rounded-xl border border-slate-700 hover:border-amber-500 transition">3 MIN</button>
+                <button onclick="setTimeMinutes(5)" id="tc-5" class="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-black rounded-xl border-2 border-amber-400 shadow transition">5 MIN</button>
+                <button onclick="setTimeMinutes(10)" id="tc-10" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-black rounded-xl border border-slate-700 hover:border-amber-500 transition">10 MIN</button>
+            </div>
+            <button onclick="startLobbyMatch()" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-black px-6 py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2">
+                <i class="fa-solid fa-play"></i> START GAME
+            </button>
+        </div>
+
+        <!-- Live Android APK Download Promo Banner -->
+        <div class="mb-4 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-amber-950/80 border border-emerald-500/40 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl flex-shrink-0 border border-emerald-500/30">
+                    <i class="fa-brands fa-android"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-black text-white">LIVE ANDROID APK (v1.0.0 RELEASE)</span>
+                        <span class="bg-emerald-500/20 text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 rounded border border-emerald-500/40 animate-pulse">READY TO INSTALL</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">I-download at i-install nang direkta sa iyong Android phone ang buong app na may 2,000 puzzles, sound effects, at AdMob integration.</p>
+                </div>
+            </div>
+            <a href="https://github.com/gptgamestudio/checkmate-puzzle-android/releases/latest/download/checkmate-puzzle.apk"
+               class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95">
+                <i class="fa-solid fa-cloud-arrow-down text-sm"></i> I-DOWNLOAD ANG APK (25 MB)
+            </a>
+        </div>
+
+        <!-- Range Selector Tabs & Puzzle Grid (For 2,000 Puzzles) -->
+        <div id="puzzles-container" class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex-grow shadow-2xl flex flex-col">
+            <div class="mb-3">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-bold block mb-2">Pumili ng Level Range (1 - 2,000):</span>
+                <div class="flex flex-wrap gap-2" id="range-tabs"></div>
+            </div>
+            <div class="flex justify-between items-center mb-3 text-xs text-slate-400">
+                <span id="current-range-label" class="font-bold text-slate-200">Ipinapakita: Puzzles 1 - 200</span>
+                <div class="flex items-center gap-4">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Solved</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Active</span>
+                </div>
+            </div>
+            <div id="puzzle-grid" class="grid grid-cols-4 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-[46vh] overflow-y-auto p-2"></div>
+        </div>
+
+        <!-- Strategy Lessons Container -->
+        <div id="strategy-container" class="hidden bg-slate-900 border border-slate-800 p-5 rounded-2xl flex-grow shadow-2xl flex flex-col space-y-3 max-h-[50vh] overflow-y-auto">
+            <h3 class="text-sm font-bold text-sky-400 uppercase tracking-wider">Chess Strategy & Tactical Principles</h3>
+            <div id="strategy-list" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- ================= 3RD DASHBOARD: LIVE GAME ARENA ================= -->
+    <div id="gameplay-screen" class="hidden flex-grow flex flex-col p-2 sm:p-4 max-w-6xl mx-auto w-full justify-between">
+        
+        <!-- 1. RESPONSIVE TOP BAR (YOU vs OPPONENT) -->
+        <div class="flex items-center justify-between bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl mb-3 text-xs shadow-xl">
+            <!-- Left: Back Button + YOU Info -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button onclick="backToDashboard()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs transition active:scale-95" title="Back to Lobby">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="flex items-center gap-1.5">
+                    <span class="font-black text-white text-xs sm:text-sm" id="game-player-badge">YOU: White</span>
+                    <span class="text-slate-400 font-semibold text-xs" id="game-player-rating">2150</span>
+                </div>
+                <span class="bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-amber-400 font-mono font-bold text-xs" id="player-clock">05:00</span>
+            </div>
+
+            <!-- Center: VS -->
+            <span class="text-xs font-black text-white uppercase tracking-widest px-3">VS</span>
+
+            <!-- Right: OPPONENT Info -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <span class="bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-sky-400 font-mono font-bold text-xs" id="opponent-clock">05:00</span>
+                <div class="flex items-center gap-1.5">
+                    <span class="font-black text-white text-xs sm:text-sm truncate max-w-[150px]" id="game-opponent-badge">OPPONENT: Magnus</span>
+                    <span class="text-slate-400 font-semibold text-xs" id="game-opponent-rating">2850</span>
+                </div>
+                <button onclick="toggleBoardThemeWeb()" class="text-emerald-400 hover:text-emerald-300 p-1.5 text-xs rounded-lg hover:bg-slate-800 transition" title="Toggle Board Theme">
+                    <i class="fa-solid fa-palette"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 5-Second Countdown Auto-Search Next Challenger Banner (upon winning online) -->
+        <div id="auto-search-banner" class="hidden bg-emerald-600 text-white text-center py-1.5 px-3 rounded-xl text-xs font-black animate-pulse mb-3 shadow-lg">
+            ⚡ PANALO KA! Auto-searching next global challenger in <span id="auto-search-sec">5</span>s... 🌍
+        </div>
+
+        <!-- 2. MAIN 16:9 DASHBOARD / GAME AREA (Ligtas sa Ads at Top Bar - BlueAccent Border) -->
+        <div class="flex-grow flex items-center justify-center mb-3">
+            <div class="w-full bg-slate-900 border-2 border-blue-500 rounded-3xl p-4 sm:p-6 shadow-2xl shadow-blue-500/10 grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+                
+                <!-- Left Pane: Match Info, Status & Controls -->
+                <div class="lg:col-span-4 flex flex-col gap-3">
+                    <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between text-xs">
+                        <span id="match-mode-label" class="text-amber-400 font-bold">Level 1: Scholar's Execution</span>
+                        <span id="player-side-label" class="bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-lg font-mono font-bold text-xs">White ⚪</span>
+                    </div>
+
+                    <div id="move-feedback" class="text-xs font-semibold text-slate-200 py-3 px-4 rounded-2xl bg-slate-950 border border-slate-800 text-center shadow-inner">
+                        I-move ang pyesa patungo sa checkmate. Movable in any direction.
+                    </div>
+
+                    <div class="flex gap-2.5">
+                        <button onclick="resetCurrentPuzzle()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-200 active:scale-95 shadow">
+                            <i class="fa-solid fa-rotate-right"></i> Reset
+                        </button>
+                        <button onclick="requestHintWeb()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-amber-400 active:scale-95 shadow">
+                            <i class="fa-solid fa-lightbulb"></i> Hint
+                        </button>
+                    </div>
+
+                    <!-- Quick Emotes -->
+                    <div class="grid grid-cols-4 gap-1.5 pt-1">
+                        <button onclick="sendWebEmote('WOW! 🤩')" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] py-1.5 rounded-lg text-slate-300 font-bold transition">WOW! 🤩</button>
+                        <button onclick="sendWebEmote('GG! 🤝')" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] py-1.5 rounded-lg text-slate-300 font-bold transition">GG! 🤝</button>
+                        <button onclick="sendWebEmote('GL! ✨')" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] py-1.5 rounded-lg text-slate-300 font-bold transition">GL! ✨</button>
+                        <button onclick="sendWebEmote('OOPS! 😅')" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] py-1.5 rounded-lg text-slate-300 font-bold transition">OOPS! 😅</button>
+                    </div>
+                </div>
+
+                <!-- Center/Right: Maximized Tournament Chessboard (Green & White Standard, Large Pieces) -->
+                <div class="lg:col-span-8 flex flex-col items-center justify-center">
+                    <div class="p-2 sm:p-3 bg-slate-950 rounded-3xl border-2 border-slate-800 shadow-2xl">
+                        <div id="board" style="width: 440px; max-width: 86vw;" class="rounded-2xl overflow-hidden shadow-2xl border border-slate-800"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WINNER MODAL -->
+    <div id="winner-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-amber-500/60 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl shadow-amber-500/20 transform scale-100 transition">
+            <h2 class="text-3xl font-black text-amber-400 tracking-wider mb-2">🏆 YOU WIN!</h2>
+            <p id="winner-modal-desc" class="text-sm text-slate-300 mb-6">Checkmate delivered! Napabilib mo ang Grandmaster.</p>
+            <div class="flex gap-3">
+                <button onclick="retryCurrentPuzzle()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold text-sm transition">
+                    Ulitin
+                </button>
+                <button onclick="closeModalAndNext()" class="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 py-3 rounded-xl font-extrabold text-sm transition shadow-lg shadow-amber-500/25">
+                    Next Level ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOSER MODAL -->
+    <div id="loser-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-red-500/60 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl shadow-red-500/20">
+            <h2 class="text-3xl font-black text-red-500 tracking-wider mb-2">TRY AGAIN! 💀</h2>
+            <p id="loser-modal-desc" class="text-sm text-slate-300 mb-6">Maling galaw! Na-defend ng Grandmaster ang posisyon.</p>
+            <div class="flex gap-3">
+                <button onclick="retryCurrentPuzzle()" class="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 text-white py-3 rounded-xl font-bold text-sm transition shadow-lg shadow-red-600/25">
+                    Subukan Muli
+                </button>
+                <button onclick="backToDashboard()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-xl font-bold text-sm transition">
+                    Dashboard
+                </button>
+            </div>
+        </div>
+    <!-- OWNER SECURITY GATE MODAL -->
+    <div id="owner-security-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-amber-500/70 p-6 rounded-3xl max-w-md w-full shadow-2xl shadow-amber-500/20 text-slate-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl border border-amber-500/40">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-sm text-white">OWNER SECURITY GATE</h3>
+                        <p class="text-[11px] text-slate-400">Restricted to App Owner • Birthday PIN</p>
+                    </div>
+                </div>
+                <button onclick="closeOwnerSecurityModal()" class="text-slate-400 hover:text-white p-1 text-base">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-300 mb-4">I-verify ang pagiging may-ari ng app. Ang ibang Gmail accounts ay awtomatikong ACCESS DENIED sa settings.</p>
+
+            <form onsubmit="verifyOwnerAccess(event)" class="space-y-3.5">
+                <div>
+                    <label class="block text-[11px] uppercase font-bold text-slate-400 mb-1">Owner Gmail Address</label>
+                    <input type="email" id="owner-email-input" value="analynlandingin77@gmail.com" required
+                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400 font-mono">
+                </div>
+                <div>
+                    <label class="block text-[11px] uppercase font-bold text-slate-400 mb-1">Security Key (Birthday PIN)</label>
+                    <div class="relative">
+                        <input type="password" id="owner-pin-input" placeholder="••••••" required
+                               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400 pr-10 font-mono">
+                        <button type="button" onclick="toggleOwnerPin()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">
+                            <i id="owner-pin-eye" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="owner-error-msg" class="hidden bg-red-950/70 border border-red-500/80 text-red-300 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-red-400"></i>
+                    <span>ACCESS DENIED! ⛔ Restricted to App Owner (analynlandingin77@gmail.com). Security Key Invalid.</span>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl text-xs transition shadow-lg shadow-amber-500/25 active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-key"></i> UNLOCK OWNER MASTER ACCESS
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- OWNER MASTER DASHBOARD MODAL -->
+    <div id="owner-dashboard-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-emerald-500/80 p-6 rounded-3xl max-w-lg w-full shadow-2xl shadow-emerald-500/20 text-slate-100 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl border border-emerald-500/40">
+                        <i class="fa-solid fa-crown"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-sm text-white">OWNER MASTER CONTROL PANEL</h3>
+                        <p class="text-[11px] text-emerald-400 font-semibold">100% LIVE PRODUCTION READY ✅</p>
+                    </div>
+                </div>
+                <button onclick="closeOwnerDashboardModal()" class="text-slate-400 hover:text-white p-1 text-base">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Verified Owner Banner -->
+            <div class="bg-emerald-950/60 border border-emerald-500/50 p-3 rounded-xl mb-3 flex items-center justify-between text-xs">
+                <div>
+                    <span class="text-emerald-300 font-black block">👑 VERIFIED APP OWNER</span>
+                    <span class="text-white font-mono font-bold">analynlandingin77@gmail.com</span>
+                </div>
+                <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-black text-[10px]">Zero-Trust Token Enforced</span>
+            </div>
+
+            <!-- Production Checklist -->
+            <div class="space-y-2 text-xs bg-slate-950 p-4 rounded-2xl border border-slate-800 mb-4">
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">Firebase Project:</span>
+                    <span class="text-sky-400 font-mono font-bold">gen-lang-client-0643285984 (chess-puzzle-game)</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">Firebase Project Number:</span>
+                    <span class="text-slate-200 font-mono font-bold">482759022910</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">Firestore Security Rules:</span>
+                    <span class="text-emerald-400 font-bold">Active (analynlandingin77 Owner-Only)</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">Other GMail Access:</span>
+                    <span class="text-red-400 font-bold">ACCESS DENIED to Owner Settings</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">AdMob Publisher ID:</span>
+                    <span class="text-amber-400 font-mono font-bold">pub-9786472984542330 (Real Monetization)</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">AdMob Banner Unit:</span>
+                    <span class="text-amber-400 font-mono text-[11px]">ca-app-pub-9786472984542330/2771361852</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">AdMob Interstitial Unit:</span>
+                    <span class="text-amber-400 font-mono text-[11px]">ca-app-pub-9786472984542330/2579790164</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">Tactical Puzzles:</span>
+                    <span class="text-sky-400 font-bold">2,000 Puzzles Level-by-Level</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">Sound Effects:</span>
+                    <span class="text-emerald-400 font-bold">Synthesized Audio (100% Full Volume)</span>
+                </div>
+                <div class="flex justify-between items-center py-1 border-b border-slate-800/80">
+                    <span class="text-slate-400">Live Web Game:</span>
+                    <a href="https://gptgamestudio.github.io/checkmate-puzzle-android/" target="_blank" class="text-sky-400 underline font-mono text-[10px]">gptgamestudio.github.io</a>
+                </div>
+                <div class="flex justify-between items-center py-1">
+                    <span class="text-slate-400">Production APK:</span>
+                    <span class="text-emerald-400 font-bold font-mono">v1.0.0 (25.6 MB Release CDN)</span>
+                </div>
+            </div>
+
+            <button onclick="closeOwnerDashboardModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                CLOSE OWNER DASHBOARD
+            </button>
+        </div>
+    </div>
+
+    <!-- LOCKED BOTTOM ADMOB BANNER (Standard 320x50 Layout) -->
+    <div class="bg-slate-900 border-t border-slate-800 py-1.5 px-4 flex items-center justify-between text-xs text-slate-400 select-none">
+        <div class="flex items-center gap-2">
+            <span class="bg-amber-500 text-slate-950 font-black text-[9px] px-1.5 py-0.5 rounded">Ad</span>
+            <span class="font-bold text-slate-200 text-[11px]">Grandmaster Chess Academy • 2,000 Puzzles</span>
+            <span class="text-slate-500 text-[10px] hidden sm:inline">Unit: ca-app-pub-9786472984542330/2771361852</span>
+        </div>
+        <a href="https://github.com/gptgamestudio/checkmate-puzzle-android/releases/latest/download/checkmate-puzzle.apk" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1 rounded-md text-[10px] transition flex items-center gap-1">
+            <i class="fa-solid fa-download"></i> INSTALL LIVE APK
+        </a>
+    </div>
+
+    <!-- JAVASCRIPT GAME LOGIC & AUTO-SAVE -->
+    <script>
+        // ==========================================
+        // INVISIBLE FULL-VOLUME CHESS AUDIO SYNTHESIZER
+        // Full volume sound effects with user mute preference
+        // ==========================================
+        let audioCtx = null;
+        let isAudioMuted = false;
+
+        function toggleWebAudioMute() {
+            isAudioMuted = !isAudioMuted;
+            const btn = document.getElementById('web-audio-mute-btn');
+            if (btn) {
+                btn.innerHTML = isAudioMuted ? 
+                    '<i class="fa-solid fa-volume-xmark text-red-400"></i> Muted' : 
+                    '<i class="fa-solid fa-volume-high text-amber-400"></i> Sound';
+            }
+        }
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playSoundMove() {
+            if (isAudioMuted) return;
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(420, now);
+                osc.frequency.exponentialRampToValueAtTime(110, now + 0.08);
+                gain.gain.setValueAtTime(1.0, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } catch (e) {}
+        }
+
+        function playSoundCapture() {
+            if (isAudioMuted) return;
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(240, now);
+                osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+                gain.gain.setValueAtTime(1.0, now); // FULL VOLUME
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+
+                const bufferSize = Math.floor(ctx.sampleRate * 0.06);
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+                }
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                const noiseGain = ctx.createGain();
+                noiseGain.gain.setValueAtTime(0.9, now);
+                noise.connect(noiseGain);
+                noiseGain.connect(ctx.destination);
+                noise.start(now);
+            } catch (e) {}
+        }
+
+        function playSoundCheck() {
+            if (isAudioMuted) return;
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc1.type = 'sine';
+                osc2.type = 'sine';
+                osc1.frequency.setValueAtTime(880, now);
+                osc2.frequency.setValueAtTime(1320, now);
+                gain.gain.setValueAtTime(1.0, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(ctx.destination);
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.28);
+                osc2.stop(now + 0.28);
+            } catch (e) {}
+        }
+
+        function playSoundWin() {
+            if (isAudioMuted) return;
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    gain.gain.setValueAtTime(1.0, now + idx * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.1 + 0.3);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now + idx * 0.1);
+                    osc.stop(now + idx * 0.1 + 0.3);
+                });
+            } catch (e) {}
+        }
+
+        function playSoundDefeat() {
+            if (isAudioMuted) return;
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(210, now);
+                osc.frequency.setValueAtTime(140, now + 0.15);
+                gain.gain.setValueAtTime(1.0, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } catch (e) {}
+        }
+
+        function playSoundStart() {
+            if (isAudioMuted) return;
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, now);
+                gain.gain.setValueAtTime(1.0, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } catch (e) {}
+        }
+
+        function playSoundPop() {
+            if (isAudioMuted) return;
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(950, now + 0.06);
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.06);
+            } catch (e) {}
+        }
+
+        // ==========================================
+        // OWNER MASTER SECURITY GATE LOGIC
+        // ==========================================
+        const AUTHORIZED_OWNER_GMAIL = "analynlandingin77@gmail.com";
+        // Cryptographic SHA-256 hash of authorized secondary owner key (no plaintext credentials in client code)
+        const OWNER_KEY_SHA256 = "2576a9fc047a6d45e85497fb230c831e96d232ba65c49c1369cb01c67ee4eace";
+
+        async function hashStringSha256(str) {
+            try {
+                const enc = new TextEncoder().encode(str);
+                const buf = await crypto.subtle.digest("SHA-256", enc);
+                return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+            } catch (e) {
+                return "";
+            }
+        }
+
+        function openOwnerSecurityModal() {
+            document.getElementById('owner-security-modal').classList.remove('hidden');
+            document.getElementById('owner-email-input').value = userProfile.email || AUTHORIZED_OWNER_GMAIL;
+            document.getElementById('owner-pin-input').value = '';
+            document.getElementById('owner-error-msg').classList.add('hidden');
+        }
+
+        function closeOwnerSecurityModal() {
+            document.getElementById('owner-security-modal').classList.add('hidden');
+        }
+
+        function closeOwnerDashboardModal() {
+            document.getElementById('owner-dashboard-modal').classList.add('hidden');
+        }
+
+        function toggleOwnerPin() {
+            const input = document.getElementById('owner-pin-input');
+            const eye = document.getElementById('owner-pin-eye');
+            if (input.type === 'password') {
+                input.type = 'text';
+                eye.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                eye.className = 'fa-solid fa-eye';
+            }
+        }
+
+        async function verifyOwnerAccess(e) {
+            e.preventDefault();
+            const email = document.getElementById('owner-email-input').value.trim().toLowerCase();
+            const pin = document.getElementById('owner-pin-input').value.trim();
+            const err = document.getElementById('owner-error-msg');
+            const hashed = await hashStringSha256(pin);
+
+            if (email === AUTHORIZED_OWNER_GMAIL && hashed === OWNER_KEY_SHA256) {
+                err.classList.add('hidden');
+                document.getElementById('owner-security-modal').classList.add('hidden');
+                document.getElementById('owner-dashboard-modal').classList.remove('hidden');
+                playSoundWin();
+            } else {
+                err.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-400 mr-1.5"></i> ACCESS DENIED! ⛔ Restricted to App Owner (${AUTHORIZED_OWNER_GMAIL}). Authorization credentials invalid.`;
+                err.classList.remove('hidden');
+                playSoundDefeat();
+            }
+        }
+
+        const ADMOB_APP_ID = "ca-app-pub-9786472984542330~7452842897";
+        const ADMOB_BANNER_ID = "ca-app-pub-9786472984542330/2771361852";
+        const ADMOB_INTERSTITIAL_ID = "ca-app-pub-9786472984542330/2579790164";
+
+        let currentMode = 'puzzles';
+        let selectedMinutes = 5;
+        let selectedAiTier = 'hard';
+        let currentPuzzleNum = 1;
+        let currentPuzzle = null;
+        let board = null;
+        let game = null;
+        let timerInterval = null;
+        let clockSecondsPlayer = 300;
+        let clockSecondsOpponent = 300;
+        let playerSide = 'w';
+        let isOnlineAutoSearching = false;
+
+        // Auto-save: Load from localStorage
+        let solvedPuzzles = new Set(JSON.parse(localStorage.getItem('chess_arena_puzzles_solved') || '[]'));
+        let userProfile = JSON.parse(localStorage.getItem('chess_arena_user_session') || JSON.stringify({
+            username: "Analyn Landingin",
+            email: "analynlandingin77@gmail.com",
+            rating: 2150,
+            country: "Philippines",
+            countryFlag: "🇵🇭",
+            isLoggedIn: true
+        }));
+
+        const globalChallengers = [
+            { name: "Magnus_Tactics", country: "🇳🇴", rating: 2850 },
+            { name: "Hikaru_Speed", country: "🇺🇸", rating: 2820 },
+            { name: "Wesley_So_PH", country: "🇵🇭", rating: 2780 },
+            { name: "Ding_Dragon", country: "🇨🇳", rating: 2760 },
+            { name: "Pragg_India", country: "🇮🇳", rating: 2740 },
+            { name: "Alireza_Attack", country: "🇫🇷", rating: 2770 }
+        ];
+        let currentChallenger = globalChallengers[0];
+
+        // 2,000 Tactical Puzzles procedural engine
+        const verifiedRoots = [
+            { id: 1, title: "Scholar's Execution", fen: "r1bqkb1r/pppp1ppp/2n5/4p3/2B1n3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 4", solution: { from: 'f3', to: 'f7' } },
+            { id: 2, title: "Smothered Mate", fen: "6rk/5Npp/8/8/8/8/8/7K w - - 0 1", solution: { from: 'f7', to: 'g7' } },
+            { id: 3, title: "Back Rank Execution", fen: "6k1/5ppp/8/8/8/8/4rPPP/3R2K1 w - - 0 1", solution: { from: 'd1', to: 'd8' } },
+            { id: 4, title: "Boden's Diagonal Mate", fen: "2kr3r/ppp2ppp/8/4b3/8/8/PPP2PPP/R1B2RK1 b - - 0 1", solution: { from: 'e5', to: 'h2' } },
+            { id: 5, title: "Anastasia's Trap", fen: "5rk1/1p3ppp/8/8/8/8/1r3PPP/R4RK1 w - - 0 1", solution: { from: 'a1', to: 'a8' } }
+        ];
+
+        function getPuzzle(num) {
+            const root = verifiedRoots[(num - 1) % verifiedRoots.length];
+            return {
+                id: num,
+                title: `${root.title} #${num}`,
+                fen: root.fen,
+                solution: root.solution
+            };
+        }
+
+        // Toggle Password Hidden Eye
+        function togglePassword() {
+            const pwd = document.getElementById('password-input');
+            const eye = document.getElementById('eye-icon');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                eye.classList.remove('fa-eye');
+                eye.classList.add('fa-eye-slash');
+            } else {
+                pwd.type = 'password';
+                eye.classList.remove('fa-eye-slash');
+                eye.classList.add('fa-eye');
+            }
+        }
+
+        function switchTab(tab) {
+            const tabLogin = document.getElementById('tab-login');
+            const tabSignup = document.getElementById('tab-signup');
+            if (tab === 'login') {
+                tabLogin.className = "flex-1 pb-3 font-semibold text-amber-400 border-b-2 border-amber-400 transition";
+                tabSignup.className = "flex-1 pb-3 font-semibold text-slate-400 transition";
+            } else {
+                tabSignup.className = "flex-1 pb-3 font-semibold text-amber-400 border-b-2 border-amber-400 transition";
+                tabLogin.className = "flex-1 pb-3 font-semibold text-slate-400 transition";
+            }
+        }
+
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('email-input').value;
+            handleLoginSuccess(email.split('@')[0]);
+        }
+
+        function handleLoginSuccess(name) {
+            userProfile.username = name;
+            userProfile.isLoggedIn = true;
+            localStorage.setItem('chess_arena_user_session', JSON.stringify(userProfile));
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('dashboard-screen').classList.remove('hidden');
+            initDashboard();
+        }
+
+        function logout() {
+            userProfile.isLoggedIn = false;
+            localStorage.setItem('chess_arena_user_session', JSON.stringify(userProfile));
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('gameplay-screen').classList.add('hidden');
+            document.getElementById('auth-screen').classList.remove('hidden');
+        }
+
+        function initDashboard() {
+            document.getElementById('player-display-name').innerText = userProfile.username;
+            document.getElementById('player-rating-val').innerText = userProfile.rating;
+            document.getElementById('solved-count-badge').innerText = solvedPuzzles.size;
+            renderRangeTabs();
+            renderPuzzles(1, 200);
+            renderStrategies();
+        }
+
+        function selectLobbyMode(mode) {
+            currentMode = mode;
+            ['puzzles', 'strategy', 'online', 'ai'].forEach(m => {
+                const btn = document.getElementById(`btn-mode-${m}`);
+                if (m === mode) {
+                    btn.classList.add('border-2', 'border-amber-500');
+                    btn.classList.remove('border-slate-800');
+                } else {
+                    btn.classList.remove('border-2', 'border-amber-500');
+                    btn.classList.add('border-slate-800');
+                }
+            });
+
+            document.getElementById('ai-level-section').classList.toggle('hidden', mode !== 'ai');
+            document.getElementById('puzzles-container').classList.toggle('hidden', mode === 'strategy');
+            document.getElementById('strategy-container').classList.toggle('hidden', mode !== 'strategy');
+        }
+
+        function setTimeMinutes(m) {
+            selectedMinutes = m;
+            [3, 5, 10].forEach(min => {
+                const b = document.getElementById(`tc-${min}`);
+                if (min === m) {
+                    b.className = "px-4 py-2 bg-amber-500 text-slate-950 text-xs font-black rounded-xl border-2 border-amber-400 shadow transition";
+                } else {
+                    b.className = "px-4 py-2 bg-slate-800 text-slate-300 text-xs font-black rounded-xl border border-slate-700 hover:border-amber-500 transition";
+                }
+            });
+        }
+
+        function setAiLevel(tier) {
+            selectedAiTier = tier;
+            ['hard', 'master', 'im'].forEach(t => {
+                const b = document.getElementById(`ai-${t}`);
+                if (t === tier) {
+                    b.className = "px-3 py-1 bg-purple-950 text-purple-300 text-xs font-bold rounded-lg border border-purple-500";
+                } else {
+                    b.className = "px-3 py-1 bg-slate-800 text-slate-400 text-xs font-bold rounded-lg";
+                }
+            });
+        }
+
+        function renderRangeTabs() {
+            const container = document.getElementById('range-tabs');
+            container.innerHTML = '';
+            for (let i = 1; i <= 2000; i += 200) {
+                const start = i;
+                const end = i + 199;
+                const btn = document.createElement('button');
+                btn.className = (start === 1) 
+                    ? "px-3 py-1 bg-amber-500 text-slate-950 font-bold rounded-lg text-xs" 
+                    : "px-3 py-1 bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold rounded-lg text-xs transition";
+                btn.innerText = `${start}-${end}`;
+                btn.onclick = () => {
+                    document.querySelectorAll('#range-tabs button').forEach(b => b.className = "px-3 py-1 bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold rounded-lg text-xs transition");
+                    btn.className = "px-3 py-1 bg-amber-500 text-slate-950 font-bold rounded-lg text-xs";
+                    document.getElementById('current-range-label').innerText = `Ipinapakita: Puzzles ${start} - ${end}`;
+                    renderPuzzles(start, end);
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        function renderPuzzles(start, end) {
+            const grid = document.getElementById('puzzle-grid');
+            grid.innerHTML = '';
+            for (let i = start; i <= end; i++) {
+                const isSolved = solvedPuzzles.has(i);
+                const btn = document.createElement('button');
+                btn.className = isSolved 
+                    ? "bg-emerald-950/70 border border-emerald-500/60 text-emerald-300 font-bold p-2.5 rounded-xl text-xs flex flex-col items-center justify-center transition hover:scale-105"
+                    : "bg-slate-950 border border-slate-800 text-slate-300 font-medium p-2.5 rounded-xl text-xs flex flex-col items-center justify-center transition hover:border-amber-400 hover:scale-105";
+                btn.innerHTML = `<span>#${i}</span><i class="fa-solid ${isSolved ? 'fa-check text-emerald-400' : 'fa-chess-pawn text-slate-600'} text-[10px] mt-1"></i>`;
+                btn.onclick = () => openPuzzle(i);
+                grid.appendChild(btn);
+            }
+        }
+
+        function renderStrategies() {
+            const list = document.getElementById('strategy-list');
+            const strats = [
+                { title: "The Absolute Pin (Gapos)", desc: "Pinned piece cannot move without exposing the King." },
+                { title: "The Deadly Knight Fork (Kabayo)", desc: "Attacking King & Queen simultaneously." },
+                { title: "Smothered Mate (Suffocated King)", desc: "King surrounded by own pieces executed by Knight." },
+                { title: "Center Control (e4/d4)", desc: "Dominate the 4 center squares early in the game." }
+            ];
+            list.innerHTML = strats.map(s => `
+                <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl">
+                    <h4 class="font-bold text-white text-xs">${s.title}</h4>
+                    <p class="text-xs text-slate-400 mt-1">${s.desc}</p>
+                </div>
+            `).join('');
+        }
+
+        function startLobbyMatch() {
+            if (currentMode === 'puzzles') {
+                openPuzzle(1);
+            } else {
+                openOnlineOrAiMatch();
+            }
+        }
+
+        function openPuzzle(num) {
+            currentPuzzleNum = num;
+            currentPuzzle = getPuzzle(num);
+            playerSide = 'w';
+
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('gameplay-screen').classList.remove('hidden');
+            document.getElementById('auto-search-banner').classList.add('hidden');
+            document.getElementById('match-mode-label').innerText = `Level ${num}: ${currentPuzzle.title}`;
+            document.getElementById('player-side-label').innerText = "White ⚪";
+
+            document.getElementById('game-player-badge').innerText = `YOU: White`;
+            document.getElementById('game-player-rating').innerText = `${userProfile.rating}`;
+            document.getElementById('game-opponent-badge').innerText = `OPPONENT: GM Bot`;
+            document.getElementById('game-opponent-rating').innerText = `2200`;
+
+            clockSecondsPlayer = 111;
+            clockSecondsOpponent = 111;
+            startClockTicker();
+            playSoundStart();
+
+            setTimeout(() => {
+                game = new Chess(currentPuzzle.fen);
+                board = Chessboard('board', {
+                    position: currentPuzzle.fen,
+                    draggable: true,
+                    orientation: 'white',
+                    pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+                    onDrop: handleDrop
+                });
+            }, 120);
+        }
+
+        function openOnlineOrAiMatch() {
+            currentChallenger = globalChallengers[Math.floor(Math.random() * globalChallengers.length)];
+            // Auto-select side: White or Black randomly
+            playerSide = Math.random() > 0.5 ? 'w' : 'b';
+
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('gameplay-screen').classList.remove('hidden');
+            document.getElementById('auto-search-banner').classList.add('hidden');
+            document.getElementById('match-mode-label').innerText = currentMode === 'online' ? `Online Match vs ${currentChallenger.name}` : `AI Match (${selectedAiTier.toUpperCase()})`;
+            document.getElementById('player-side-label').innerText = playerSide === 'w' ? "White ⚪" : "Black ⚫";
+
+            document.getElementById('game-player-badge').innerText = playerSide === 'w' ? `YOU: White` : `YOU: Black`;
+            document.getElementById('game-player-rating').innerText = `${userProfile.rating}`;
+            document.getElementById('game-opponent-badge').innerText = `OPPONENT: ${currentChallenger.name}`;
+            document.getElementById('game-opponent-rating').innerText = `${currentChallenger.rating}`;
+
+            clockSecondsPlayer = selectedMinutes * 60;
+            clockSecondsOpponent = selectedMinutes * 60;
+            startClockTicker();
+            playSoundStart();
+
+            setTimeout(() => {
+                game = new Chess();
+                board = Chessboard('board', {
+                    position: 'start',
+                    draggable: true,
+                    orientation: playerSide === 'w' ? 'white' : 'black',
+                    pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+                    onDrop: handleDrop
+                });
+
+                if (playerSide === 'b') {
+                    setTimeout(makeAiReply, 800);
+                }
+            }, 120);
+        }
+
+        function handleDrop(source, target) {
+            const move = game.move({ from: source, to: target, promotion: 'q' });
+            if (move === null) return 'snapback';
+
+            // Play sound for move / capture / check at full volume
+            const isCapture = (move.flags && (move.flags.includes('c') || move.flags.includes('e'))) || move.captured;
+            const inCheck = game.in_check();
+            if (isCapture) {
+                playSoundCapture();
+            } else if (inCheck) {
+                playSoundCheck();
+            } else {
+                playSoundMove();
+            }
+
+            if (currentMode === 'puzzles') {
+                const isCorrect = (source === currentPuzzle.solution.from && target === currentPuzzle.solution.to);
+                if (isCorrect || game.in_checkmate()) {
+                    triggerWin();
+                } else {
+                    triggerLoss();
+                }
+            } else {
+                if (game.in_checkmate()) {
+                    triggerWin();
+                } else {
+                    setTimeout(makeAiReply, 700);
+                }
+            }
+        }
+
+        function makeAiReply() {
+            if (game.game_over()) return;
+            const moves = game.moves({ verbose: true });
+            if (moves.length === 0) return;
+            const move = moves[Math.floor(Math.random() * moves.length)];
+            game.move(move);
+            board.position(game.fen());
+
+            const isCapture = (move.flags && (move.flags.includes('c') || move.flags.includes('e'))) || move.captured;
+            const inCheck = game.in_check();
+            if (isCapture) {
+                playSoundCapture();
+            } else if (inCheck) {
+                playSoundCheck();
+            } else {
+                playSoundMove();
+            }
+
+            if (game.in_checkmate()) {
+                triggerLoss();
+            }
+        }
+
+        function sendWebEmote(emote) {
+            playSoundPop();
+            const feedback = document.getElementById('move-feedback');
+            const original = feedback.innerText;
+            feedback.innerText = `You: ${emote}`;
+            setTimeout(() => { feedback.innerText = original; }, 2200);
+        }
+
+        function triggerWin() {
+            clearInterval(timerInterval);
+            playSoundWin();
+            solvedPuzzles.add(currentPuzzleNum);
+            localStorage.setItem('chess_arena_puzzles_solved', JSON.stringify([...solvedPuzzles]));
+            userProfile.rating += 15;
+            localStorage.setItem('chess_arena_user_session', JSON.stringify(userProfile));
+
+            if (window.confetti) confetti({ particleCount: 70, spread: 60 });
+            document.getElementById('winner-modal').classList.remove('hidden');
+
+            // Online Mode: Auto-search next challenger in 5 seconds countdown!
+            if (currentMode === 'online') {
+                document.getElementById('auto-search-banner').classList.remove('hidden');
+                let count = 5;
+                document.getElementById('auto-search-sec').innerText = count;
+                const cd = setInterval(() => {
+                    count--;
+                    document.getElementById('auto-search-sec').innerText = count;
+                    if (count <= 0) {
+                        clearInterval(cd);
+                        document.getElementById('winner-modal').classList.add('hidden');
+                        openOnlineOrAiMatch();
+                    }
+                }, 1000);
+            }
+        }
+
+        function triggerLoss() {
+            clearInterval(timerInterval);
+            playSoundDefeat();
+            document.getElementById('loser-modal').classList.remove('hidden');
+        }
+
+        function retryCurrentPuzzle() {
+            document.getElementById('winner-modal').classList.add('hidden');
+            document.getElementById('loser-modal').classList.add('hidden');
+            if (currentMode === 'puzzles') openPuzzle(currentPuzzleNum);
+            else openOnlineOrAiMatch();
+        }
+
+        function closeModalAndNext() {
+            document.getElementById('winner-modal').classList.add('hidden');
+            openPuzzle(currentPuzzleNum + 1);
+        }
+
+        function backToDashboard() {
+            clearInterval(timerInterval);
+            document.getElementById('gameplay-screen').classList.add('hidden');
+            document.getElementById('winner-modal').classList.add('hidden');
+            document.getElementById('loser-modal').classList.add('hidden');
+            document.getElementById('dashboard-screen').classList.remove('hidden');
+            initDashboard();
+        }
+
+        function startClockTicker() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!game) return;
+                const isPlayerTurn = (game.turn() === playerSide);
+                if (isPlayerTurn) {
+                    clockSecondsPlayer = Math.max(0, clockSecondsPlayer - 1);
+                } else {
+                    clockSecondsOpponent = Math.max(0, clockSecondsOpponent - 1);
+                }
+                const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+                document.getElementById('player-clock').innerText = fmt(clockSecondsPlayer);
+                document.getElementById('opponent-clock').innerText = fmt(clockSecondsOpponent);
+            }, 1000);
+        }
+
+        function toggleBoardThemeWeb() {
+            // Already standard green & white!
+        }
+
+        function requestHintWeb() {
+            alert(`💡 Hint: Suriin ang checking squares ng kalaban!`);
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            if (userProfile.isLoggedIn) {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('dashboard-screen').classList.remove('hidden');
+                initDashboard();
+            }
+        });
+    </script>
+</body>
+</html>

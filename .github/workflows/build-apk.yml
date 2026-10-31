@@ -1,0 +1,75 @@
+name: Build and Host Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Restore Signing Keystore
+        run: |
+          if [ -f "debug.keystore.base64" ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+          elif [ ! -f "debug.keystore" ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Build Debug APK
+        run: |
+          gradle assembleDebug --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/checkmate-puzzle.apk
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chess-puzzle-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0
+          name: Checkmate Chess Puzzle (Official Live APK)
+          make_latest: true
+          files: |
+            app/build/outputs/apk/debug/checkmate-puzzle.apk
+            app/build/outputs/apk/debug/app-debug.apk
+          body: |
+            ## 🎮 Checkmate Chess Puzzle — Official Live Android APK
+
+            Iisang direct download link para sa lahat ng players (no login required):
+
+            ### 📥 Direct APK Download:
+            👉 **[checkmate-puzzle.apk](https://github.com/gptgamestudio/checkmate-puzzle-android/releases/latest/download/checkmate-puzzle.apk)** (~25 MB)
+
+            ### 📱 Paano i-install sa Android:
+            1. I-tap ang **checkmate-puzzle.apk** link sa itaas para ma-download.
+            2. **Paalala:** Kung may lumang test install sa iyong phone, i-uninstall muna ito para maiwasan ang signature error ("App not installed").
+            3. Buksan ang file at piliin ang **Install** (piliin ang "Install anyway" kung magtanong ang Play Protect).
+            4. Mag-enjoy sa 2,000 Puzzles, 3D Chessboard, Sound Effects, at Online Matches!
+          draft: false
+          prerelease: false

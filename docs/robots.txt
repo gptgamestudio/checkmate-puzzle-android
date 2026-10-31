@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gptgamestudio.github.io/checkmate-puzzle-android/sitemap.xml
+Sitemap: https://gptgamestudio.github.io/checkmate-puzzle-android/docs/sitemap.xml

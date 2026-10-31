@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with chess puzzle progression and rating",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Unique auth UID of the user"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Public screen name or gamer tag"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "rating": {
+          "type": "integer",
+          "description": "Current chess puzzle rating"
+        },
+        "solvedCount": {
+          "type": "integer",
+          "description": "Total number of puzzles successfully solved"
+        },
+        "currentPuzzleId": {
+          "type": "integer",
+          "description": "The current unlocked puzzle ID (1-2000)"
+        },
+        "lastActive": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last puzzle activity"
+        }
+      },
+      "required": ["userId", "displayName", "rating", "solvedCount", "currentPuzzleId"]
+    },
+    "PuzzleProgress": {
+      "title": "PuzzleProgress",
+      "description": "Record of a user's attempt or completion of a puzzle",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Auth UID of user"
+        },
+        "puzzleId": {
+          "type": "integer",
+          "description": "Puzzle number (1-2000)"
+        },
+        "solved": {
+          "type": "boolean",
+          "description": "Whether the puzzle was solved"
+        },
+        "timeSpentSeconds": {
+          "type": "integer",
+          "description": "Duration spent on puzzle"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Completion timestamp"
+        }
+      },
+      "required": ["userId", "puzzleId", "solved", "completedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Player profile and global progression"
+    },
+    "/users/{userId}/progress/{puzzleId}": {
+      "schema": "PuzzleProgress",
+      "description": "Per-puzzle completion record for a user"
+    }
+  }
+}

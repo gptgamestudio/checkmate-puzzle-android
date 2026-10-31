@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-android-chesspuz-def4ce0f-e132-4992-91e8-f80aa2d88f5d",
+      "rules": "firestore.rules"
+    }
+  ]
+}
