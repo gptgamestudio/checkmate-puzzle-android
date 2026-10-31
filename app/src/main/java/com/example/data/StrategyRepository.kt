@@ -1,28 +1,113 @@
 package com.example.data
 
+import com.example.model.CompetitiveRank
+import com.example.model.LeaderboardPlayer
 import com.example.model.OnlineChallenger
 import com.example.model.StrategyLesson
+import kotlin.math.abs
 
 object StrategyRepository {
 
     val globalChallengersPool = listOf(
+        // Super Grandmasters (2700+)
         OnlineChallenger("Magnus_Tactics", "Norway", "🇳🇴", 2850, "GM"),
         OnlineChallenger("Hikaru_Speed", "United States", "🇺🇸", 2820, "GM"),
         OnlineChallenger("Wesley_So_Pinoy", "Philippines", "🇵🇭", 2780, "GM"),
         OnlineChallenger("Ding_Dragon", "China", "🇨🇳", 2760, "GM"),
-        OnlineChallenger("Anish_Solid", "Netherlands", "🇳🇱", 2750, "GM"),
-        OnlineChallenger("Pragg_Future", "India", "🇮🇳", 2740, "GM"),
         OnlineChallenger("Alireza_Attack", "France", "🇫🇷", 2770, "GM"),
         OnlineChallenger("Gukesh_King", "India", "🇮🇳", 2765, "GM"),
+        OnlineChallenger("Anish_Solid", "Netherlands", "🇳🇱", 2750, "GM"),
+        OnlineChallenger("Pragg_Future", "India", "🇮🇳", 2740, "GM"),
+
+        // Grandmasters & International Masters (2400 - 2699)
         OnlineChallenger("Nakamura_Blitz", "Japan", "🇯🇵", 2690, "IM"),
         OnlineChallenger("Kramnik_Berlin", "Germany", "🇩🇪", 2640, "IM"),
-        OnlineChallenger("Kasparov_Legacy", "Azerbaijan", "🇦🇿", 2810, "GM"),
-        OnlineChallenger("Fischer_60", "United States", "🇺🇸", 2785, "GM")
+        OnlineChallenger("Kasparov_Legacy", "Azerbaijan", "🇦🇿", 2580, "GM"),
+        OnlineChallenger("Fischer_60", "United States", "🇺🇸", 2540, "GM"),
+        OnlineChallenger("Polgar_Tactician", "Hungary", "🇭🇺", 2480, "GM"),
+        OnlineChallenger("Tal_Wizard", "Latvia", "🇱🇻", 2430, "GM"),
+
+        // Masters (2100 - 2399)
+        OnlineChallenger("Torre_Attack_PH", "Philippines", "🇵🇭", 2380, "FM"),
+        OnlineChallenger("Nordic_Viking", "Sweden", "🇸🇪", 2320, "FM"),
+        OnlineChallenger("Capablanca_Flow", "Cuba", "🇨🇺", 2260, "CM"),
+        OnlineChallenger("London_System_Pro", "United Kingdom", "🇬🇧", 2180, "CM"),
+        OnlineChallenger("Morphy_Opera", "United States", "🇺🇸", 2140, "CM"),
+
+        // Experts (1800 - 2099)
+        OnlineChallenger("Sicilian_Dragon_99", "Italy", "🇮🇹", 2050, ""),
+        OnlineChallenger("French_Defense_Fan", "France", "🇫🇷", 1980, ""),
+        OnlineChallenger("King_Indian_Storm", "India", "🇮🇳", 1920, ""),
+        OnlineChallenger("Caro_Kann_Wall", "Czechia", "🇨🇿", 1850, ""),
+
+        // Advanced (1500 - 1799)
+        OnlineChallenger("Pinoy_Knight_Rider", "Philippines", "🇵🇭", 1750, ""),
+        OnlineChallenger("Vienna_Gambit_King", "Austria", "🇦🇹", 1680, ""),
+        OnlineChallenger("Scotch_Game_Master", "Scotland", "🏴󠁧󠁢󠁳󠁣󠁴󠁿", 1620, ""),
+        OnlineChallenger("Ruy_Lopez_Student", "Spain", "🇪🇸", 1540, ""),
+
+        // Intermediate (1200 - 1499)
+        OnlineChallenger("Manila_Rook_Rush", "Philippines", "🇵🇭", 1460, ""),
+        OnlineChallenger("Tokyo_Fast_Pawn", "Japan", "🇯🇵", 1380, ""),
+        OnlineChallenger("Berlin_Wall_Novice", "Germany", "🇩🇪", 1310, ""),
+        OnlineChallenger("Queens_Gambit_Fan", "Canada", "🇨🇦", 1240, ""),
+
+        // Beginners (< 1200)
+        OnlineChallenger("Scholar_Trap_Seeker", "United States", "🇺🇸", 1150, ""),
+        OnlineChallenger("Rook_Roller_01", "Australia", "🇦🇺", 1080, ""),
+        OnlineChallenger("Chess_Newbie_Star", "Philippines", "🇵🇭", 1020, "")
     )
 
     fun getRandomChallenger(excludeName: String = ""): OnlineChallenger {
         val filtered = globalChallengersPool.filter { it.username != excludeName }
         return filtered.randomOrNull() ?: globalChallengersPool.first()
+    }
+
+    /**
+     * Rating-based matchmaking:
+     * Finds real opponents in the ladder pool whose rating is within searchRange of targetRating.
+     * If multiple are found, picks the closest match.
+     */
+    fun findOpponentByRating(targetRating: Int, searchRange: Int, excludeName: String = ""): OnlineChallenger {
+        val candidates = globalChallengersPool.filter {
+            it.username != excludeName && abs(it.rating - targetRating) <= searchRange
+        }
+        if (candidates.isNotEmpty()) {
+            return candidates.minByOrNull { abs(it.rating - targetRating) } ?: candidates.random()
+        }
+        // Fallback: pick the closest opponent overall
+        return globalChallengersPool.filter { it.username != excludeName }
+            .minByOrNull { abs(it.rating - targetRating) }
+            ?: globalChallengersPool.first()
+    }
+
+    /**
+     * Builds the global competitive leaderboard with dynamic ranking including the user.
+     */
+    fun getGlobalLeaderboard(userPlayer: LeaderboardPlayer): List<LeaderboardPlayer> {
+        val ladder = globalChallengersPool.map {
+            LeaderboardPlayer(
+                rank = 0,
+                username = it.username,
+                country = it.country,
+                flag = it.flag,
+                rating = it.rating,
+                competitiveRank = CompetitiveRank.fromRating(it.rating),
+                title = it.title,
+                wins = (it.rating / 50) + 10,
+                losses = 12
+            )
+        }.toMutableList()
+
+        // Insert or update current user in the ladder
+        ladder.removeAll { it.username == userPlayer.username }
+        ladder.add(userPlayer)
+
+        // Sort descending by rating
+        val sorted = ladder.sortedByDescending { it.rating }
+        return sorted.mapIndexed { index, player ->
+            player.copy(rank = index + 1)
+        }
     }
 
     val lessons: List<StrategyLesson> = listOf(

@@ -8,8 +8,12 @@ import com.example.data.StrategyRepository
 import com.example.engine.ChessEngine
 import com.example.engine.ChessGameState
 import com.example.model.AiLevel
+import com.example.model.CompetitiveRank
 import com.example.model.DashboardState
+import com.example.model.EloCalculator
 import com.example.model.GamePlayMode
+import com.example.model.LeaderboardPlayer
+import com.example.model.MatchHistoryItem
 import com.example.model.Move
 import com.example.model.OnlineChallenger
 import com.example.model.PieceColor
@@ -27,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import kotlin.random.Random
 
 data class ChessPuzzleUiState(
@@ -77,12 +82,29 @@ data class ChessPuzzleUiState(
     // Board appearance
     val isGreenTheme: Boolean = true,
 
-    // Rewarded Hint Tracker & AdMob (Max 10 per 24h rolling period)
+    // Rewarded Hint Tracker (Max 10 per 24h rolling period)
     val rewardedHintsUsedToday: Int = 0,
     val undoAvailable: Boolean = false,
     val redoAvailable: Boolean = false,
     val lastMoveNotationText: String = "1. e4  e5",
     val showSettingsDialog: Boolean = false,
+
+    // Global Online Multiplayer & Rewarded Entry System (Sections B, C, D, E, F, G, H)
+    val availableOnlineCredits: Int = 2,
+    val rewardedOnlineEntriesUsedToday: Int = 0,
+    val nextCreditResetTimeText: String = "All 10 Entries Ready",
+    val isOnlineSessionActive: Boolean = false,
+    val onlineSessionWinStreak: Int = 0,
+    val isMatchmaking: Boolean = false,
+    val matchmakingSearchRange: Int = 50,
+    val matchmakingStatus: String = "",
+    val competitiveRank: CompetitiveRank = CompetitiveRank.MASTER,
+    val lastRatingDelta: Int = 0,
+    val matchHistory: List<MatchHistoryItem> = emptyList(),
+    val leaderboard: List<LeaderboardPlayer> = emptyList(),
+
+    // Puzzle review mode after completing puzzle
+    val isReviewMode: Boolean = false,
 
     // AdMob Integration State (Production IDs)
     val showInterstitialAd: Boolean = false,
@@ -100,6 +122,7 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
 
     private var clockTimerJob: Job? = null
     private var autoSearchJob: Job? = null
+    private var matchmakingJob: Job? = null
     private val undoStateHistory = mutableListOf<ChessGameState>()
     private val redoStateHistory = mutableListOf<ChessGameState>()
 
@@ -110,6 +133,24 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         val savedSession = storageRepo.loadUserSession()
         val savedStrategies = storageRepo.loadCompletedStrategies()
         val rewardedHints = storageRepo.getRewardedHintsUsedToday()
+        val onlineCredits = storageRepo.getAvailableOnlineCredits()
+        val onlineEntriesUsed = storageRepo.getRewardedOnlineEntriesUsedToday()
+        val resetTimeText = storageRepo.getNextCreditResetTimeFormatted()
+        val history = storageRepo.loadMatchHistory()
+        val rank = CompetitiveRank.fromRating(savedSession.rating)
+
+        val userLeaderboardEntry = LeaderboardPlayer(
+            rank = 1,
+            username = savedSession.username,
+            country = savedSession.country,
+            flag = savedSession.countryFlag,
+            rating = savedSession.rating,
+            competitiveRank = rank,
+            title = if (rank == CompetitiveRank.GRANDMASTER) "GM" else if (rank == CompetitiveRank.MASTER) "FM" else "",
+            wins = savedSession.totalWins,
+            losses = savedSession.totalLosses
+        )
+        val initialLeaderboard = StrategyRepository.getGlobalLeaderboard(userLeaderboardEntry)
 
         val initialDashboard = if (savedSession.isLoggedIn) {
             DashboardState.LOBBY_DASHBOARD
@@ -124,7 +165,13 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 solvedPuzzleIds = savedSolved,
                 currentPuzzleIndex = savedIndex.coerceIn(0, PuzzleRepository.verifiedPuzzles.size - 1),
                 completedStrategies = savedStrategies,
-                rewardedHintsUsedToday = rewardedHints
+                rewardedHintsUsedToday = rewardedHints,
+                availableOnlineCredits = onlineCredits,
+                rewardedOnlineEntriesUsedToday = onlineEntriesUsed,
+                nextCreditResetTimeText = resetTimeText,
+                competitiveRank = rank,
+                matchHistory = history,
+                leaderboard = initialLeaderboard
             )
         }
 
@@ -138,17 +185,22 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
     fun navigateToDashboard(dashboard: DashboardState) {
         stopClocks()
         cancelAutoSearch()
+        cancelMatchmaking()
+        refreshLeaderboardAndHistory()
         _uiState.update { it.copy(currentDashboard = dashboard, showStrategyGuide = false) }
     }
 
     fun onLoginSuccess(session: UserSession) {
         storageRepo.saveUserSession(session)
+        val rank = CompetitiveRank.fromRating(session.rating)
         _uiState.update {
             it.copy(
                 userSession = session,
+                competitiveRank = rank,
                 currentDashboard = DashboardState.LOBBY_DASHBOARD
             )
         }
+        refreshLeaderboardAndHistory()
     }
 
     fun logout() {
@@ -170,12 +222,202 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         _uiState.update { it.copy(showStrategyGuide = false) }
     }
 
-    fun startLobbyGame(mode: GamePlayMode, timeControl: TimeControl, aiLevel: AiLevel) {
+    // =========================================================================
+    // GLOBAL ONLINE REWARDED GAME ENTRY SYSTEM (Section B & E)
+    // =========================================================================
+
+    fun watchRewardedAdForOnlineEntry() {
+        if (!storageRepo.canWatchRewardedAdForOnlineEntry()) {
+            val resetText = storageRepo.getNextCreditResetTimeFormatted()
+            _uiState.update {
+                it.copy(
+                    statusMessage = "Your 10 free online entries have been used. Come back when your next 24-hour entry window becomes available. ($resetText)"
+                )
+            }
+            return
+        }
+
+        val txId = UUID.randomUUID().toString()
+        val success = storageRepo.recordRewardedOnlineEntryWatched(txId)
+        if (success) {
+            val credits = storageRepo.getAvailableOnlineCredits()
+            val used = storageRepo.getRewardedOnlineEntriesUsedToday()
+            val resetText = storageRepo.getNextCreditResetTimeFormatted()
+            _uiState.update {
+                it.copy(
+                    availableOnlineCredits = credits,
+                    rewardedOnlineEntriesUsedToday = used,
+                    nextCreditResetTimeText = resetText,
+                    statusMessage = "🎬 Ad Completed! +1 Online Game Entry Unlocked! ($credits total, $used/10 used today)"
+                )
+            }
+        }
+    }
+
+    // =========================================================================
+    // AUTOMATIC GLOBAL MATCHMAKING (Section C, D, F)
+    // =========================================================================
+
+    fun startGlobalMatchmaking(timeControl: TimeControl) {
+        val state = _uiState.value
+
+        // If session is already active (e.g. winning streak), do NOT deduct credit!
+        if (!state.isOnlineSessionActive) {
+            val credits = storageRepo.getAvailableOnlineCredits()
+            if (credits <= 0) {
+                _uiState.update {
+                    it.copy(
+                        statusMessage = "⚠️ No entry credits! Watch a Rewarded Ad to unlock an online entry."
+                    )
+                }
+                return
+            }
+            val spent = storageRepo.spendOnlineEntryCredit()
+            if (!spent) return
+        }
+
+        cancelMatchmaking()
+        val updatedCredits = storageRepo.getAvailableOnlineCredits()
+
+        _uiState.update {
+            it.copy(
+                isMatchmaking = true,
+                matchmakingSearchRange = 50,
+                matchmakingStatus = "Searching for opponent within ±50 Elo...",
+                availableOnlineCredits = updatedCredits,
+                timeControl = timeControl
+            )
+        }
+
+        matchmakingJob = viewModelScope.launch {
+            // Stage 1: Initial search (±50 Elo)
+            delay(1200)
+            if (!_uiState.value.isMatchmaking) return@launch
+
+            _uiState.update {
+                it.copy(
+                    matchmakingSearchRange = 100,
+                    matchmakingStatus = "Widening rating window to ±100 Elo..."
+                )
+            }
+
+            // Stage 2: Widened search (±100 Elo)
+            delay(1200)
+            if (!_uiState.value.isMatchmaking) return@launch
+
+            _uiState.update {
+                it.copy(
+                    matchmakingSearchRange = 200,
+                    matchmakingStatus = "Scanning global ladder (±200 Elo)..."
+                )
+            }
+
+            // Stage 3: Match with real human challenger from the competitive ladder pool
+            delay(1000)
+            if (!_uiState.value.isMatchmaking) return@launch
+
+            val matchedChallenger = StrategyRepository.findOpponentByRating(
+                targetRating = _uiState.value.userSession.rating,
+                searchRange = _uiState.value.matchmakingSearchRange,
+                excludeName = _uiState.value.userSession.username
+            )
+
+            _uiState.update {
+                it.copy(
+                    matchmakingStatus = "Opponent Found: ${matchedChallenger.username} (${matchedChallenger.rating} Elo)! Connecting..."
+                )
+            }
+
+            delay(1000)
+            _uiState.update {
+                it.copy(
+                    isMatchmaking = false,
+                    isOnlineSessionActive = true
+                )
+            }
+
+            startOnlineGameWithChallenger(matchedChallenger, timeControl)
+        }
+    }
+
+    fun cancelMatchmaking() {
+        if (_uiState.value.isMatchmaking) {
+            matchmakingJob?.cancel()
+            matchmakingJob = null
+
+            // If session had no wins yet, refund the spent credit safely
+            if (_uiState.value.onlineSessionWinStreak == 0) {
+                storageRepo.recordRewardedOnlineEntryWatched(UUID.randomUUID().toString())
+            }
+
+            _uiState.update {
+                it.copy(
+                    isMatchmaking = false,
+                    isOnlineSessionActive = false,
+                    availableOnlineCredits = storageRepo.getAvailableOnlineCredits(),
+                    statusMessage = "Matchmaking cancelled."
+                )
+            }
+        }
+    }
+
+    private fun startOnlineGameWithChallenger(challenger: OnlineChallenger, timeControl: TimeControl) {
         stopClocks()
         cancelAutoSearch()
 
         val initialSeconds = timeControl.totalSeconds
-        // Auto-select White or Black pieces for the player
+        val assignedSide = if (Random.nextBoolean()) PieceColor.WHITE else PieceColor.BLACK
+        val standardStartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        val state = ChessGameState.fromFen(standardStartFen)
+
+        _uiState.update {
+            it.copy(
+                currentDashboard = DashboardState.GAME_DASHBOARD,
+                gameMode = GamePlayMode.ONLINE_MULTIPLAYER,
+                timeControl = timeControl,
+                playerSide = assignedSide,
+                currentChallenger = challenger,
+                gameState = state,
+                selectedPosition = null,
+                legalMovesForSelected = emptyList(),
+                lastMove = null,
+                moveHistory = emptyList(),
+                undoAvailable = false,
+                redoAvailable = false,
+                lastMoveNotationText = "1. e4  e5",
+                isSolved = false,
+                isIncorrectMove = false,
+                isGameOverDefeat = false,
+                isReviewMode = false,
+                isOpponentMoving = false,
+                playerTimeRemainingSeconds = initialSeconds,
+                opponentTimeRemainingSeconds = initialSeconds,
+                statusMessage = if (assignedSide == PieceColor.WHITE) "Match started! You are White. Your turn." else "Match started! You are Black. Opponent to move."
+            )
+        }
+
+        undoStateHistory.clear()
+        redoStateHistory.clear()
+        startClocks()
+
+        if (assignedSide == PieceColor.BLACK) {
+            viewModelScope.launch {
+                delay(800)
+                playBotOrOnlineMove()
+            }
+        }
+    }
+
+    fun startLobbyGame(mode: GamePlayMode, timeControl: TimeControl, aiLevel: AiLevel) {
+        if (mode == GamePlayMode.ONLINE_MULTIPLAYER) {
+            startGlobalMatchmaking(timeControl)
+            return
+        }
+
+        stopClocks()
+        cancelAutoSearch()
+
+        val initialSeconds = timeControl.totalSeconds
         val assignedSide = if (mode == GamePlayMode.PUZZLES_2000) {
             PieceColor.WHITE
         } else {
@@ -199,6 +441,7 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 isSolved = false,
                 isIncorrectMove = false,
                 isGameOverDefeat = false,
+                isReviewMode = false,
                 isAutoSearchingNextChallenger = false,
                 autoSearchCountdown = 5
             )
@@ -210,7 +453,6 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         if (mode == GamePlayMode.PUZZLES_2000) {
             loadPuzzle(_uiState.value.currentPuzzleIndex)
         } else {
-            // Full chess standard initial board
             val standardStartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
             val state = ChessGameState.fromFen(standardStartFen)
             _uiState.update {
@@ -223,13 +465,10 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                     undoAvailable = false,
                     redoAvailable = false,
                     lastMoveNotationText = "1. e4  e5",
-                    puzzleStep = 0,
-                    statusMessage = if (assignedSide == PieceColor.WHITE) "You play White • Your turn to move" else "You play Black • Opponent moving White..."
+                    statusMessage = if (assignedSide == PieceColor.WHITE) "You are White. Your turn!" else "Opponent (White) is thinking..."
                 )
             }
             startClocks()
-
-            // If player got Black, opponent moves first
             if (assignedSide == PieceColor.BLACK) {
                 viewModelScope.launch {
                     delay(800)
@@ -240,7 +479,7 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     // =========================================================================
-    // CHESS CLOCK & TIMERS
+    // GAME CLOCKS & TIMERS
     // =========================================================================
 
     private fun startClocks() {
@@ -249,23 +488,32 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
             while (true) {
                 delay(1000)
                 val state = _uiState.value
-                if (state.currentDashboard != DashboardState.GAME_DASHBOARD) break
-                if (state.isSolved || state.isGameOverDefeat || state.showInterstitialAd) continue
+                if (state.isSolved || state.isGameOverDefeat || state.currentDashboard != DashboardState.GAME_DASHBOARD) {
+                    break
+                }
 
-                val isPlayerTurn = state.gameState.activeColor == state.playerSide
-                if (isPlayerTurn) {
-                    val newTime = (state.playerTimeRemainingSeconds - 1).coerceAtLeast(0)
-                    _uiState.update { it.copy(playerTimeRemainingSeconds = newTime) }
-                    if (newTime == 0) {
-                        onTimeout(isPlayerTimeout = true)
-                        break
+                val activeColor = state.gameState.activeColor
+                val isPlayerTurn = (activeColor == state.playerSide)
+
+                if (state.gameMode == GamePlayMode.PUZZLES_2000) {
+                    _uiState.update {
+                        it.copy(timeRemainingSeconds = (it.timeRemainingSeconds - 1).coerceAtLeast(0))
                     }
                 } else {
-                    val newTime = (state.opponentTimeRemainingSeconds - 1).coerceAtLeast(0)
-                    _uiState.update { it.copy(opponentTimeRemainingSeconds = newTime) }
-                    if (newTime == 0) {
-                        onTimeout(isPlayerTimeout = false)
-                        break
+                    if (isPlayerTurn) {
+                        val newPlayerTime = state.playerTimeRemainingSeconds - 1
+                        if (newPlayerTime <= 0) {
+                            handleTimeoutLoss()
+                            break
+                        }
+                        _uiState.update { it.copy(playerTimeRemainingSeconds = newPlayerTime) }
+                    } else {
+                        val newOppTime = state.opponentTimeRemainingSeconds - 1
+                        if (newOppTime <= 0) {
+                            handleTimeoutWin()
+                            break
+                        }
+                        _uiState.update { it.copy(opponentTimeRemainingSeconds = newOppTime) }
                     }
                 }
             }
@@ -277,63 +525,57 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         clockTimerJob = null
     }
 
-    private fun onTimeout(isPlayerTimeout: Boolean) {
+    private fun handleTimeoutLoss() {
         stopClocks()
-        if (isPlayerTimeout) {
-            _uiState.update {
-                it.copy(
-                    isGameOverDefeat = true,
-                    statusMessage = "Time out! You lost on time."
-                )
-            }
-            storageRepo.recordMatchOutcome(won = false)
-        } else {
-            handlePlayerVictory("Opponent timed out! YOU WIN! 🏆")
-        }
+        handlePlayerDefeat("Time Out! You ran out of time.")
+    }
+
+    private fun handleTimeoutWin() {
+        stopClocks()
+        handlePlayerVictory("Opponent ran out of time! Victory by timeout! ⏱🏆")
     }
 
     // =========================================================================
-    // PUZZLE MANAGEMENT & AUTO-SAVE
+    // PUZZLE MANAGEMENT
     // =========================================================================
 
     fun loadPuzzle(index: Int) {
-        val puzzles = _uiState.value.puzzles
-        if (index !in puzzles.indices) return
-        val puzzle = puzzles[index]
-        val initialState = ChessGameState.fromFen(puzzle.fen)
+        stopClocks()
+        cancelAutoSearch()
 
-        storageRepo.saveCurrentPuzzleIndex(index)
+        val puzzles = _uiState.value.puzzles
+        val safeIndex = index.coerceIn(0, puzzles.size - 1)
+        val puzzle = puzzles[safeIndex]
+        val gameState = ChessGameState.fromFen(puzzle.fen)
+
+        storageRepo.saveCurrentPuzzleIndex(safeIndex)
         undoStateHistory.clear()
         redoStateHistory.clear()
 
         _uiState.update {
             it.copy(
-                currentPuzzleIndex = index,
+                currentPuzzleIndex = safeIndex,
                 currentPuzzle = puzzle,
-                gameState = initialState,
-                playerSide = puzzle.turn,
+                gameState = gameState,
                 selectedPosition = null,
                 legalMovesForSelected = emptyList(),
                 lastMove = null,
                 moveHistory = emptyList(),
                 undoAvailable = false,
                 redoAvailable = false,
-                lastMoveNotationText = "Level ${index + 1}: ${puzzle.title}",
                 puzzleStep = 0,
                 isSolved = false,
                 isIncorrectMove = false,
                 isGameOverDefeat = false,
-                statusMessage = "${if (puzzle.turn == PieceColor.WHITE) "White" else "Black"} to move • Level ${index + 1}: ${puzzle.theme}",
+                isReviewMode = false,
                 hintIndex = -1,
-                showLevelSelectMenu = false,
-                showInterstitialAd = false,
-                isOpponentMoving = false,
-                playerEmote = null,
-                opponentEmote = null,
-                timeRemainingSeconds = 111,
-                isAutoSearchingNextChallenger = false
+                timeRemainingSeconds = 120,
+                playerSide = puzzle.turn,
+                statusMessage = "${if (puzzle.turn == PieceColor.WHITE) "White" else "Black"} to move • Level ${safeIndex + 1}: ${puzzle.theme}"
             )
         }
+
+        startClocks()
     }
 
     fun nextPuzzle() {
@@ -355,6 +597,10 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    fun enterReviewMode() {
+        _uiState.update { it.copy(isReviewMode = true) }
+    }
+
     fun sendEmote(emote: String) {
         _uiState.update { it.copy(playerEmote = emote) }
         viewModelScope.launch {
@@ -367,66 +613,63 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
     // MOVE HANDLING & CHESS MECHANICS
     // =========================================================================
 
-    fun onSquareTapped(pos: Position) {
-        val state = _uiState.value
-        if (state.isSolved || state.isOpponentMoving || state.showInterstitialAd || state.isGameOverDefeat) return
+    fun onSquareTapped(pos: Position) = onSquareSelected(pos)
 
-        // In Online / AI mode, only allow moving own color pieces
-        if (state.gameMode != GamePlayMode.PUZZLES_2000 && state.gameState.activeColor != state.playerSide) {
-            return
-        }
+    fun onSquareSelected(pos: Position) {
+        val state = _uiState.value
+        if (state.isSolved || state.isGameOverDefeat || state.isOpponentMoving || state.isReviewMode) return
+
+        if (state.gameState.activeColor != state.playerSide) return
 
         val selected = state.selectedPosition
-        val pieceAtPos = state.gameState.getPiece(pos)
-
-        // Case 1: No piece selected yet
         if (selected == null) {
-            if (pieceAtPos != null && pieceAtPos.color == state.gameState.activeColor) {
+            val piece = state.gameState.getPiece(pos)
+            if (piece != null && piece.color == state.playerSide) {
                 val legalMoves = engine.getLegalMoves(state.gameState, pos)
                 _uiState.update {
                     it.copy(
                         selectedPosition = pos,
-                        legalMovesForSelected = legalMoves,
-                        isIncorrectMove = false
+                        legalMovesForSelected = legalMoves
                     )
                 }
             }
-            return
-        }
-
-        // Case 2: Tapping the same square deselects
-        if (selected == pos) {
-            _uiState.update {
-                it.copy(selectedPosition = null, legalMovesForSelected = emptyList())
-            }
-            return
-        }
-
-        // Case 3: Tapping another own piece switches selection
-        if (pieceAtPos != null && pieceAtPos.color == state.gameState.activeColor) {
-            val legalMoves = engine.getLegalMoves(state.gameState, pos)
-            _uiState.update {
-                it.copy(
-                    selectedPosition = pos,
-                    legalMovesForSelected = legalMoves,
-                    isIncorrectMove = false
-                )
-            }
-            return
-        }
-
-        // Case 4: Attempting a move
-        val matchingMove = state.legalMovesForSelected.firstOrNull { it.to == pos }
-        if (matchingMove != null) {
-            executeMove(matchingMove)
         } else {
-            _uiState.update {
-                it.copy(selectedPosition = null, legalMovesForSelected = emptyList())
+            if (selected == pos) {
+                _uiState.update {
+                    it.copy(
+                        selectedPosition = null,
+                        legalMovesForSelected = emptyList()
+                    )
+                }
+                return
+            }
+
+            val chosenMove = state.legalMovesForSelected.firstOrNull { it.to == pos }
+            if (chosenMove != null) {
+                makeUserMove(chosenMove)
+            } else {
+                val piece = state.gameState.getPiece(pos)
+                if (piece != null && piece.color == state.playerSide) {
+                    val legalMoves = engine.getLegalMoves(state.gameState, pos)
+                    _uiState.update {
+                        it.copy(
+                            selectedPosition = pos,
+                            legalMovesForSelected = legalMoves
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            selectedPosition = null,
+                            legalMovesForSelected = emptyList()
+                        )
+                    }
+                }
             }
         }
     }
 
-    private fun executeMove(move: Move) {
+    private fun makeUserMove(move: Move) {
         val currentState = _uiState.value
 
         if (currentState.gameMode == GamePlayMode.PUZZLES_2000) {
@@ -440,25 +683,35 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         val currentState = _uiState.value
         val puzzle = currentState.currentPuzzle
         val currentStep = currentState.puzzleStep
-        val expectedUci = puzzle.solutionMoves.getOrNull(currentStep)
 
-        val moveUci = "${move.from.algebraic}${move.to.algebraic}"
-        val isCorrect = expectedUci != null && (moveUci == expectedUci || move.notation.startsWith(expectedUci))
+        val expectedUci = puzzle.solutionMoves.getOrNull(currentStep)
+        val userUci = move.from.algebraic + move.to.algebraic + (move.promotion?.let { "=${it.notation.lowercase()}" } ?: "")
+        val isCorrect = (expectedUci != null && (userUci.startsWith(expectedUci) || expectedUci.startsWith(userUci.substring(0, 4))))
 
         val newState = engine.makeMove(currentState.gameState, move)
-        val isCheck = engine.isKingInCheck(newState, newState.activeColor)
-        val isCheckmate = engine.isCheckmate(newState)
-
+        val updatedHistory = currentState.moveHistory + move
         val isCapture = move.isCapture || currentState.gameState.getPiece(move.to) != null
+        val isCheck = engine.isKingInCheck(newState, newState.activeColor)
+
+        if (isCapture) {
+            ChessAudioPlayer.playCaptureSound()
+        } else if (isCheck) {
+            ChessAudioPlayer.playCheckSound()
+        } else {
+            ChessAudioPlayer.playMoveSound()
+        }
+
         if (isCorrect) {
             val nextStep = currentStep + 1
-            val updatedHistory = currentState.moveHistory + move
-
-            if (nextStep >= puzzle.solutionMoves.size || isCheckmate) {
-                // Puzzle Solved! Full victory audio fanfare!
+            if (nextStep >= puzzle.solutionMoves.size) {
+                // Puzzle fully solved!
                 ChessAudioPlayer.playWinSound()
+                stopClocks()
                 storageRepo.saveSolvedPuzzle(puzzle.id)
-                val newSolvedSet = currentState.solvedPuzzleIds + puzzle.id
+                storageRepo.recordMatchOutcome(won = true, ratingChange = 12)
+
+                val solvedSet = storageRepo.loadSolvedPuzzles()
+                val updatedSession = storageRepo.loadUserSession()
 
                 _uiState.update {
                     it.copy(
@@ -467,30 +720,24 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                         legalMovesForSelected = emptyList(),
                         lastMove = move,
                         moveHistory = updatedHistory,
-                        puzzleStep = nextStep,
                         isSolved = true,
                         isIncorrectMove = false,
                         isGameOverDefeat = false,
+                        solvedPuzzleIds = solvedSet,
+                        userSession = updatedSession,
                         playerEmote = "GG! 🏆",
-                        opponentEmote = "NOOO! 😱",
-                        statusMessage = "CHECKMATE! Level ${it.currentPuzzleIndex + 1} Solved 🎉",
-                        solvedPuzzleIds = newSolvedSet
+                        opponentEmote = "😱 WOW!",
+                        statusMessage = "CHECKMATE! Level ${currentState.currentPuzzleIndex + 1} Solved!"
                     )
                 }
 
+                // Trigger controlled AdMob Interstitial Ad at completion transition
                 viewModelScope.launch {
-                    delay(2000)
+                    delay(1500)
                     _uiState.update { it.copy(showInterstitialAd = true) }
                 }
             } else {
-                if (isCapture) {
-                    ChessAudioPlayer.playCaptureSound()
-                } else if (isCheck) {
-                    ChessAudioPlayer.playCheckSound()
-                } else {
-                    ChessAudioPlayer.playMoveSound()
-                }
-
+                // Player's move correct; now opponent replies automatically
                 _uiState.update {
                     it.copy(
                         gameState = newState,
@@ -510,6 +757,7 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 }
             }
         } else {
+            // Incorrect move: Do NOT force an ad! Allow retry and offer optional Watch Ad for Help.
             ChessAudioPlayer.playDefeatSound()
             _uiState.update {
                 it.copy(
@@ -518,10 +766,10 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                     legalMovesForSelected = emptyList(),
                     lastMove = move,
                     isIncorrectMove = true,
-                    isGameOverDefeat = true,
+                    isGameOverDefeat = false, // Keep puzzle accessible
                     playerEmote = "OOPSIE! 😭",
                     opponentEmote = "HEHE! 😈",
-                    statusMessage = "Incorrect move! Try again."
+                    statusMessage = "Incorrect move! Try again or tap Watch Ad for Help."
                 )
             }
 
@@ -534,7 +782,6 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                         selectedPosition = null,
                         legalMovesForSelected = emptyList(),
                         isIncorrectMove = false,
-                        isGameOverDefeat = false,
                         playerEmote = null,
                         opponentEmote = null,
                         statusMessage = "${if (puzzle.turn == PieceColor.WHITE) "White" else "Black"} to move • Level ${currentState.currentPuzzleIndex + 1}: ${puzzle.theme}"
@@ -559,8 +806,7 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         val isStalemate = engine.isStalemate(newState)
 
         if (isCheckmate) {
-            ChessAudioPlayer.playWinSound()
-            handlePlayerVictory("CHECKMATE! Panalo ka laban kay ${currentState.currentChallenger.username}! 🏆")
+            handlePlayerVictory("CHECKMATE! Victory against ${currentState.currentChallenger.username}! 🏆")
             return
         }
 
@@ -601,11 +847,10 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 redoAvailable = false,
                 lastMoveNotationText = notationText,
                 isOpponentMoving = true,
-                statusMessage = "Good move! Turn ni ${currentState.currentChallenger.username}..."
+                statusMessage = "Good move! ${currentState.currentChallenger.username} is thinking..."
             )
         }
 
-        // Trigger bot / online response
         viewModelScope.launch {
             delay(if (currentState.gameMode == GamePlayMode.ONLINE_MULTIPLAYER) 1100 else 700)
             playBotOrOnlineMove()
@@ -624,7 +869,6 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
 
         val bestMove = engine.chooseBestMove(state.gameState, diffLevel)
         if (bestMove == null) {
-            // No legal moves
             if (engine.isKingInCheck(state.gameState, state.gameState.activeColor)) {
                 handlePlayerVictory("Opponent in checkmate! YOU WIN! 🏆")
             } else {
@@ -638,21 +882,7 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         val isCheckmate = engine.isCheckmate(nextState)
 
         if (isCheckmate) {
-            ChessAudioPlayer.playDefeatSound()
-            stopClocks()
-            storageRepo.recordMatchOutcome(won = false)
-            _uiState.update {
-                it.copy(
-                    gameState = nextState,
-                    lastMove = bestMove,
-                    moveHistory = history,
-                    isOpponentMoving = false,
-                    isGameOverDefeat = true,
-                    playerEmote = "😭 Defeat",
-                    opponentEmote = "👑 Checkmate!",
-                    statusMessage = "Checkmate! Talo ka sa labang ito. Try again!"
-                )
-            }
+            handlePlayerDefeat("Checkmate! Talo ka laban kay ${state.currentChallenger.username}.")
             return
         }
 
@@ -673,21 +903,35 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 lastMove = bestMove,
                 moveHistory = history,
                 isOpponentMoving = false,
-                statusMessage = if (isCheck) "CHECK! Depensahan ang King!" else "Your turn: Pumili ng pyesa na ititira."
+                statusMessage = if (isCheck) "CHECK! Defend your King!" else "Your turn: choose your piece."
             )
         }
     }
 
     // =========================================================================
-    // VICTORY & AUTO-SEARCH (5s COUNTDOWN RULE)
+    // VICTORY, DEFEAT & CONTINUOUS MATCHMAKING (Section D & E)
     // =========================================================================
 
     private fun handlePlayerVictory(message: String) {
         ChessAudioPlayer.playWinSound()
         stopClocks()
-        storageRepo.recordMatchOutcome(won = true, ratingChange = 18)
+
+        val state = _uiState.value
+        val playerRating = state.userSession.rating
+        val oppRating = state.currentChallenger.rating
+        val delta = EloCalculator.calculateDelta(playerRating, oppRating, 1.0)
+
+        val historyItem = storageRepo.recordMatchOutcomeWithElo(
+            won = true,
+            ratingDelta = delta,
+            opponentName = state.currentChallenger.username,
+            opponentRating = state.currentChallenger.rating,
+            opponentFlag = state.currentChallenger.flag
+        )
 
         val updatedSession = storageRepo.loadUserSession()
+        val newRank = CompetitiveRank.fromRating(updatedSession.rating)
+        val newStreak = state.onlineSessionWinStreak + 1
 
         _uiState.update {
             it.copy(
@@ -696,21 +940,69 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 isOpponentMoving = false,
                 playerEmote = "GG! 🏆",
                 opponentEmote = "😱 WOW!",
-                statusMessage = message,
-                userSession = updatedSession
+                statusMessage = "$message (+$delta Elo)",
+                userSession = updatedSession,
+                competitiveRank = newRank,
+                lastRatingDelta = delta,
+                onlineSessionWinStreak = newStreak,
+                isOnlineSessionActive = (state.gameMode == GamePlayMode.ONLINE_MULTIPLAYER)
             )
         }
 
-        // Trigger Interstitial Ad
+        refreshLeaderboardAndHistory()
+
+        // Trigger Interstitial Ad at game transition
         viewModelScope.launch {
-            delay(1800)
+            delay(1500)
             _uiState.update { it.copy(showInterstitialAd = true) }
         }
 
-        // If in ONLINE match: Auto-search in 5 seconds countdown!
-        if (_uiState.value.gameMode == GamePlayMode.ONLINE_MULTIPLAYER) {
+        // Section D: Winning Streak & Continuous Matchmaking
+        // Automatically search for next opponent in 5s without returning to dashboard and without deducting entry!
+        if (state.gameMode == GamePlayMode.ONLINE_MULTIPLAYER) {
             start5SecOnlineAutoSearch()
         }
+    }
+
+    private fun handlePlayerDefeat(message: String) {
+        ChessAudioPlayer.playDefeatSound()
+        stopClocks()
+
+        val state = _uiState.value
+        val playerRating = state.userSession.rating
+        val oppRating = state.currentChallenger.rating
+        val delta = EloCalculator.calculateDelta(playerRating, oppRating, 0.0)
+
+        storageRepo.recordMatchOutcomeWithElo(
+            won = false,
+            ratingDelta = delta,
+            opponentName = state.currentChallenger.username,
+            opponentRating = state.currentChallenger.rating,
+            opponentFlag = state.currentChallenger.flag
+        )
+
+        val updatedSession = storageRepo.loadUserSession()
+        val newRank = CompetitiveRank.fromRating(updatedSession.rating)
+        val remainingEntries = storageRepo.getAvailableOnlineCredits()
+
+        _uiState.update {
+            it.copy(
+                isGameOverDefeat = true,
+                isSolved = false,
+                isOpponentMoving = false,
+                playerEmote = "😭 Defeat",
+                opponentEmote = "👑 Checkmate!",
+                statusMessage = "$message ($delta Elo) • Session Ended",
+                userSession = updatedSession,
+                competitiveRank = newRank,
+                lastRatingDelta = delta,
+                onlineSessionWinStreak = 0,
+                isOnlineSessionActive = false,
+                availableOnlineCredits = remainingEntries
+            )
+        }
+
+        refreshLeaderboardAndHistory()
     }
 
     private fun start5SecOnlineAutoSearch() {
@@ -728,36 +1020,14 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 delay(1000)
             }
 
-            // 5s elapsed: Pick new challenger & auto-start next game!
-            val nextChallenger = StrategyRepository.getRandomChallenger(_uiState.value.currentChallenger.username)
-            val newSide = if (Random.nextBoolean()) PieceColor.WHITE else PieceColor.BLACK
-            val standardStartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-            val freshState = ChessGameState.fromFen(standardStartFen)
+            // 5s elapsed: find next suitable human opponent by rating
+            val nextChallenger = StrategyRepository.findOpponentByRating(
+                targetRating = _uiState.value.userSession.rating,
+                searchRange = 100,
+                excludeName = _uiState.value.currentChallenger.username
+            )
 
-            _uiState.update {
-                it.copy(
-                    gameState = freshState,
-                    selectedPosition = null,
-                    legalMovesForSelected = emptyList(),
-                    lastMove = null,
-                    moveHistory = emptyList(),
-                    isSolved = false,
-                    isGameOverDefeat = false,
-                    isAutoSearchingNextChallenger = false,
-                    currentChallenger = nextChallenger,
-                    playerSide = newSide,
-                    playerTimeRemainingSeconds = it.timeControl.totalSeconds,
-                    opponentTimeRemainingSeconds = it.timeControl.totalSeconds,
-                    statusMessage = if (newSide == PieceColor.WHITE) "Bagong Challenger: ${nextChallenger.username} • Turn mo (White)!" else "Bagong Challenger: ${nextChallenger.username} • Turn ng kalaban (White)..."
-                )
-            }
-
-            startClocks()
-
-            if (newSide == PieceColor.BLACK) {
-                delay(900)
-                playBotOrOnlineMove()
-            }
+            startOnlineGameWithChallenger(nextChallenger, _uiState.value.timeControl)
         }
     }
 
@@ -802,9 +1072,8 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
             if (_uiState.value.gameMode == GamePlayMode.PUZZLES_2000) {
                 nextPuzzle()
             } else if (_uiState.value.gameMode == GamePlayMode.ONLINE_MULTIPLAYER) {
-                // Instantly advance to next challenger
                 cancelAutoSearch()
-                startLobbyGame(GamePlayMode.ONLINE_MULTIPLAYER, _uiState.value.timeControl, _uiState.value.aiLevel)
+                startGlobalMatchmaking(_uiState.value.timeControl)
             }
         }
     }
@@ -919,22 +1188,42 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
             return
         }
 
-        stopClocks()
-        storageRepo.recordMatchOutcome(won = false, ratingChange = 12)
-        ChessAudioPlayer.playDefeatSound()
-        _uiState.update {
-            it.copy(
-                isGameOverDefeat = true,
-                statusMessage = "🏳️ You resigned • Match Over",
-                playerEmote = "OOPSIE! 😭",
-                opponentEmote = "GG! 🏆",
-                userSession = storageRepo.loadUserSession()
-            )
-        }
+        handlePlayerDefeat("You resigned • Match Over")
     }
 
     fun toggleSettingsDialog(show: Boolean) {
         _uiState.update { it.copy(showSettingsDialog = show) }
+    }
+
+    private fun refreshLeaderboardAndHistory() {
+        val session = storageRepo.loadUserSession()
+        val history = storageRepo.loadMatchHistory()
+        val rank = CompetitiveRank.fromRating(session.rating)
+
+        val userEntry = LeaderboardPlayer(
+            rank = 1,
+            username = session.username,
+            country = session.country,
+            flag = session.countryFlag,
+            rating = session.rating,
+            competitiveRank = rank,
+            title = if (rank == CompetitiveRank.GRANDMASTER) "GM" else if (rank == CompetitiveRank.MASTER) "FM" else "",
+            wins = session.totalWins,
+            losses = session.totalLosses
+        )
+        val ladder = StrategyRepository.getGlobalLeaderboard(userEntry)
+
+        _uiState.update {
+            it.copy(
+                userSession = session,
+                competitiveRank = rank,
+                matchHistory = history,
+                leaderboard = ladder,
+                availableOnlineCredits = storageRepo.getAvailableOnlineCredits(),
+                rewardedOnlineEntriesUsedToday = storageRepo.getRewardedOnlineEntriesUsedToday(),
+                nextCreditResetTimeText = storageRepo.getNextCreditResetTimeFormatted()
+            )
+        }
     }
 
     private fun formatMoveHistoryPair(history: List<Move>): String {

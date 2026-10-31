@@ -107,6 +107,19 @@ fun LandscapeChessScreen(
                 userSession = uiState.userSession,
                 adBannerId = uiState.adMobBannerId,
                 solvedCount = uiState.solvedPuzzleIds.size,
+                availableOnlineCredits = uiState.availableOnlineCredits,
+                rewardedOnlineEntriesUsedToday = uiState.rewardedOnlineEntriesUsedToday,
+                nextCreditResetTimeText = uiState.nextCreditResetTimeText,
+                competitiveRank = uiState.competitiveRank,
+                isMatchmaking = uiState.isMatchmaking,
+                matchmakingStatus = uiState.matchmakingStatus,
+                matchmakingSearchRange = uiState.matchmakingSearchRange,
+                matchHistory = uiState.matchHistory,
+                leaderboard = uiState.leaderboard,
+                statusMessage = uiState.statusMessage,
+                onWatchRewardedOnlineAd = { viewModel.watchRewardedAdForOnlineEntry() },
+                onStartMatchmaking = { tc -> viewModel.startGlobalMatchmaking(tc) },
+                onCancelMatchmaking = { viewModel.cancelMatchmaking() },
                 onStartGame = { mode, timeControl, aiLevel ->
                     viewModel.startLobbyGame(mode, timeControl, aiLevel)
                 },
@@ -322,8 +335,14 @@ fun LandscapeChessScreen(
 
             // Big 3D "YOU WIN" or "TRY AGAIN" Victory Overlay
             WinnerLoserOverlay(
-                isWin = uiState.isSolved,
+                isWin = uiState.isSolved && !uiState.isReviewMode,
                 isLose = uiState.isGameOverDefeat,
+                isPuzzleMode = uiState.gameMode == GamePlayMode.PUZZLES_2000,
+                isOnlineMode = uiState.gameMode == GamePlayMode.ONLINE_MULTIPLAYER,
+                ratingDelta = uiState.lastRatingDelta,
+                winStreak = uiState.onlineSessionWinStreak,
+                isAutoSearching = uiState.isAutoSearchingNextChallenger,
+                autoSearchCountdown = uiState.autoSearchCountdown,
                 onNextLevel = {
                     if (uiState.gameMode == GamePlayMode.PUZZLES_2000) {
                         viewModel.nextPuzzle()
@@ -339,7 +358,9 @@ fun LandscapeChessScreen(
                         viewModel.startLobbyGame(uiState.gameMode, uiState.timeControl, uiState.aiLevel)
                     }
                 },
-                onHint = { viewModel.requestHint() }
+                onReview = { viewModel.enterReviewMode() },
+                onWatchAdForHelp = { viewModel.watchRewardedAdForHint() },
+                onReturnToDashboard = { viewModel.navigateToDashboard(DashboardState.LOBBY_DASHBOARD) }
             )
 
             // Interstitial Ad Dialog Overlay (Controlled frequency after winning checkmate)
