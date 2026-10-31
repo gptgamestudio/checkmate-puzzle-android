@@ -77,6 +77,13 @@ data class ChessPuzzleUiState(
     // Board appearance
     val isGreenTheme: Boolean = true,
 
+    // Rewarded Hint Tracker & AdMob (Max 10 per 24h rolling period)
+    val rewardedHintsUsedToday: Int = 0,
+    val undoAvailable: Boolean = false,
+    val redoAvailable: Boolean = false,
+    val lastMoveNotationText: String = "1. e4  e5",
+    val showSettingsDialog: Boolean = false,
+
     // AdMob Integration State (Production IDs)
     val showInterstitialAd: Boolean = false,
     val adMobAppId: String = "ca-app-pub-9786472984542330~7452842897",
@@ -93,6 +100,8 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
 
     private var clockTimerJob: Job? = null
     private var autoSearchJob: Job? = null
+    private val undoStateHistory = mutableListOf<ChessGameState>()
+    private val redoStateHistory = mutableListOf<ChessGameState>()
 
     init {
         // Load auto-saved data from device storage
@@ -100,6 +109,7 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         val savedIndex = storageRepo.loadCurrentPuzzleIndex()
         val savedSession = storageRepo.loadUserSession()
         val savedStrategies = storageRepo.loadCompletedStrategies()
+        val rewardedHints = storageRepo.getRewardedHintsUsedToday()
 
         val initialDashboard = if (savedSession.isLoggedIn) {
             DashboardState.LOBBY_DASHBOARD
@@ -113,7 +123,8 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 currentDashboard = initialDashboard,
                 solvedPuzzleIds = savedSolved,
                 currentPuzzleIndex = savedIndex.coerceIn(0, PuzzleRepository.verifiedPuzzles.size - 1),
-                completedStrategies = savedStrategies
+                completedStrategies = savedStrategies,
+                rewardedHintsUsedToday = rewardedHints
             )
         }
 
@@ -193,6 +204,9 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
             )
         }
 
+        undoStateHistory.clear()
+        redoStateHistory.clear()
+
         if (mode == GamePlayMode.PUZZLES_2000) {
             loadPuzzle(_uiState.value.currentPuzzleIndex)
         } else {
@@ -206,6 +220,9 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                     legalMovesForSelected = emptyList(),
                     lastMove = null,
                     moveHistory = emptyList(),
+                    undoAvailable = false,
+                    redoAvailable = false,
+                    lastMoveNotationText = "1. e4  e5",
                     puzzleStep = 0,
                     statusMessage = if (assignedSide == PieceColor.WHITE) "You play White • Your turn to move" else "You play Black • Opponent moving White..."
                 )
@@ -286,6 +303,8 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         val initialState = ChessGameState.fromFen(puzzle.fen)
 
         storageRepo.saveCurrentPuzzleIndex(index)
+        undoStateHistory.clear()
+        redoStateHistory.clear()
 
         _uiState.update {
             it.copy(
@@ -297,6 +316,9 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 legalMovesForSelected = emptyList(),
                 lastMove = null,
                 moveHistory = emptyList(),
+                undoAvailable = false,
+                redoAvailable = false,
+                lastMoveNotationText = "Level ${index + 1}: ${puzzle.title}",
                 puzzleStep = 0,
                 isSolved = false,
                 isIncorrectMove = false,
@@ -524,8 +546,12 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
 
     private fun executeFullGameMove(move: Move) {
         val currentState = _uiState.value
+        undoStateHistory.add(currentState.gameState)
+        redoStateHistory.clear()
+
         val newState = engine.makeMove(currentState.gameState, move)
         val updatedHistory = currentState.moveHistory + move
+        val notationText = formatMoveHistoryPair(updatedHistory)
 
         val isCapture = move.isCapture || currentState.gameState.getPiece(move.to) != null
         val isCheck = engine.isKingInCheck(newState, newState.activeColor)
@@ -555,6 +581,9 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                     moveHistory = updatedHistory,
                     selectedPosition = null,
                     legalMovesForSelected = emptyList(),
+                    undoAvailable = true,
+                    redoAvailable = false,
+                    lastMoveNotationText = notationText,
                     statusMessage = "Draw by Stalemate! (Tabla)"
                 )
             }
@@ -568,6 +597,9 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
                 legalMovesForSelected = emptyList(),
                 lastMove = move,
                 moveHistory = updatedHistory,
+                undoAvailable = true,
+                redoAvailable = false,
+                lastMoveNotationText = notationText,
                 isOpponentMoving = true,
                 statusMessage = "Good move! Turn ni ${currentState.currentChallenger.username}..."
             )
@@ -729,7 +761,7 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    private fun cancelAutoSearch() {
+    fun cancelAutoSearch() {
         autoSearchJob?.cancel()
         autoSearchJob = null
         _uiState.update { it.copy(isAutoSearchingNextChallenger = false) }
@@ -801,5 +833,119 @@ class ChessPuzzleViewModel(application: Application) : AndroidViewModel(applicat
 
     fun toggleBoardTheme() {
         _uiState.update { it.copy(isGreenTheme = !it.isGreenTheme) }
+    }
+
+    // =========================================================================
+    // PRO MASTER REDESIGN CONTROLS (Undo, Redo, Resign, Rewarded Hint Ad)
+    // =========================================================================
+
+    fun watchRewardedAdForHint() {
+        if (!storageRepo.canWatchRewardedAdForHint()) {
+            _uiState.update {
+                it.copy(
+                    statusMessage = "⚠️ Max 10 rewarded hints reached today! (Resets every 24h)"
+                )
+            }
+            return
+        }
+
+        val success = storageRepo.recordRewardedHintWatched()
+        if (success) {
+            val count = storageRepo.getRewardedHintsUsedToday()
+            _uiState.update {
+                it.copy(
+                    rewardedHintsUsedToday = count,
+                    statusMessage = "🎬 Ad Completed! +1 Hint Unlocked ($count/10 used today)"
+                )
+            }
+            requestHint()
+        }
+    }
+
+    fun undoMove() {
+        val state = _uiState.value
+        if (state.isSolved || state.isOpponentMoving) return
+
+        if (state.gameMode == GamePlayMode.PUZZLES_2000) {
+            restartPuzzle()
+            _uiState.update { it.copy(statusMessage = "Move undone • Try again!") }
+            return
+        }
+
+        if (undoStateHistory.isNotEmpty()) {
+            redoStateHistory.add(state.gameState)
+            val previousState = undoStateHistory.removeAt(undoStateHistory.size - 1)
+            val newHistory = if (state.moveHistory.isNotEmpty()) state.moveHistory.dropLast(1) else emptyList()
+            _uiState.update {
+                it.copy(
+                    gameState = previousState,
+                    selectedPosition = null,
+                    legalMovesForSelected = emptyList(),
+                    lastMove = newHistory.lastOrNull(),
+                    moveHistory = newHistory,
+                    undoAvailable = undoStateHistory.isNotEmpty(),
+                    redoAvailable = true,
+                    lastMoveNotationText = formatMoveHistoryPair(newHistory),
+                    statusMessage = "Move undone"
+                )
+            }
+        }
+    }
+
+    fun redoMove() {
+        val state = _uiState.value
+        if (redoStateHistory.isNotEmpty()) {
+            val nextState = redoStateHistory.removeAt(redoStateHistory.size - 1)
+            undoStateHistory.add(state.gameState)
+            _uiState.update {
+                it.copy(
+                    gameState = nextState,
+                    selectedPosition = null,
+                    legalMovesForSelected = emptyList(),
+                    undoAvailable = true,
+                    redoAvailable = redoStateHistory.isNotEmpty(),
+                    statusMessage = "Move redone"
+                )
+            }
+        }
+    }
+
+    fun resignGame() {
+        val state = _uiState.value
+        if (state.isSolved || state.isGameOverDefeat) return
+
+        if (state.gameMode == GamePlayMode.PUZZLES_2000) {
+            restartPuzzle()
+            return
+        }
+
+        stopClocks()
+        storageRepo.recordMatchOutcome(won = false, ratingChange = 12)
+        ChessAudioPlayer.playDefeatSound()
+        _uiState.update {
+            it.copy(
+                isGameOverDefeat = true,
+                statusMessage = "🏳️ You resigned • Match Over",
+                playerEmote = "OOPSIE! 😭",
+                opponentEmote = "GG! 🏆",
+                userSession = storageRepo.loadUserSession()
+            )
+        }
+    }
+
+    fun toggleSettingsDialog(show: Boolean) {
+        _uiState.update { it.copy(showSettingsDialog = show) }
+    }
+
+    private fun formatMoveHistoryPair(history: List<Move>): String {
+        if (history.isEmpty()) return "Ready"
+        val last = history.last()
+        val moveNumber = (history.size + 1) / 2
+        return if (history.size % 2 != 0) {
+            "$moveNumber. ${last.from.algebraic} ➔ ${last.to.algebraic}"
+        } else {
+            val prev = history[history.size - 2]
+            "$moveNumber. ${prev.from.algebraic} ➔ ${prev.to.algebraic}  ${last.to.algebraic}"
+        }
     }
 }

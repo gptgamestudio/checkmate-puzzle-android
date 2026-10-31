@@ -21,6 +21,9 @@ class ChessStorageRepository(context: Context) {
         private const val KEY_COMPLETED_STRATEGIES = "completed_strategies"
         private const val KEY_TOTAL_WINS = "total_wins"
         private const val KEY_TOTAL_LOSSES = "total_losses"
+        private const val KEY_REWARDED_AD_HINTS_COUNT = "rewarded_ad_hints_count"
+        private const val KEY_REWARDED_AD_LAST_TIMESTAMP = "rewarded_ad_last_timestamp"
+        const val MAX_REWARDED_HINTS_PER_24H = 10
     }
 
     // Auto-save & load solved puzzles
@@ -96,4 +99,37 @@ class ChessStorageRepository(context: Context) {
     fun loadCompletedStrategies(): Set<String> {
         return prefs.getStringSet(KEY_COMPLETED_STRATEGIES, emptySet()) ?: emptySet()
     }
+
+    // Rewarded Ad Hint Tracker (Max 10 per rolling 24-hour period)
+    fun getRewardedHintsUsedToday(): Int {
+        val lastTimestamp = prefs.getLong(KEY_REWARDED_AD_LAST_TIMESTAMP, 0L)
+        val now = System.currentTimeMillis()
+        if (now - lastTimestamp >= 24 * 60 * 60 * 1000L) {
+            // Reset for the new 24h rolling period
+            prefs.edit()
+                .putInt(KEY_REWARDED_AD_HINTS_COUNT, 0)
+                .putLong(KEY_REWARDED_AD_LAST_TIMESTAMP, now)
+                .apply()
+            return 0
+        }
+        return prefs.getInt(KEY_REWARDED_AD_HINTS_COUNT, 0)
+    }
+
+    fun canWatchRewardedAdForHint(): Boolean {
+        return getRewardedHintsUsedToday() < MAX_REWARDED_HINTS_PER_24H
+    }
+
+    fun recordRewardedHintWatched(): Boolean {
+        if (!canWatchRewardedAdForHint()) return false
+        val current = getRewardedHintsUsedToday()
+        val now = System.currentTimeMillis()
+        val existingFirstTimestamp = prefs.getLong(KEY_REWARDED_AD_LAST_TIMESTAMP, 0L)
+        val baseTimestamp = if (current == 0 || existingFirstTimestamp == 0L) now else existingFirstTimestamp
+        prefs.edit()
+            .putInt(KEY_REWARDED_AD_HINTS_COUNT, current + 1)
+            .putLong(KEY_REWARDED_AD_LAST_TIMESTAMP, baseTimestamp)
+            .apply()
+        return true
+    }
 }
+

@@ -326,82 +326,124 @@
         </div>
     </div>
 
-    <!-- ================= 3RD DASHBOARD: LIVE GAME ARENA ================= -->
-    <div id="gameplay-screen" class="hidden flex-grow flex flex-col p-2 sm:p-4 max-w-6xl mx-auto w-full justify-between">
+    <!-- ================= 3RD DASHBOARD: SAKANA PRO MASTER LIVE ARENA ================= -->
+    <div id="gameplay-screen" class="hidden flex-grow flex flex-col p-2 sm:p-3 max-w-7xl mx-auto w-full justify-between">
         
-        <!-- 1. RESPONSIVE TOP BAR (YOU vs OPPONENT) -->
-        <div class="flex items-center justify-between bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl mb-3 text-xs shadow-xl">
-            <!-- Left: Back Button + YOU Info -->
+        <!-- 1. SAKANA PRO MASTER TOP BAR (YOU vs OPPONENT) -->
+        <div class="flex items-center justify-between bg-slate-900/90 border border-blue-600/60 px-4 py-2 rounded-2xl mb-2 text-xs shadow-xl backdrop-blur-md">
+            <!-- Left: Circular Electric Blue Back Button + YOU Info -->
             <div class="flex items-center gap-2 sm:gap-3">
-                <button onclick="backToDashboard()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-xl text-xs transition active:scale-95" title="Back to Lobby">
-                    <i class="fa-solid fa-arrow-left"></i>
+                <button onclick="backToDashboard()" class="w-9 h-9 rounded-full bg-slate-950 border-2 border-blue-500 hover:border-amber-400 text-white flex items-center justify-center transition active:scale-95 shadow-lg shadow-blue-500/20" title="Back to Lobby">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
                 </button>
-                <div class="flex items-center gap-1.5">
-                    <span class="font-black text-white text-xs sm:text-sm" id="game-player-badge">YOU: White</span>
-                    <span class="text-slate-400 font-semibold text-xs" id="game-player-rating">2150</span>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full border-2 border-amber-400 overflow-hidden bg-blue-900 shadow">
+                        <img src="assets/avatar_winner_1793081380198.jpg" alt="Avatar" class="w-full h-full object-cover">
+                    </div>
+                    <div>
+                        <div class="font-black text-white text-xs sm:text-sm" id="game-player-badge">GM Player</div>
+                        <div class="flex items-center text-[10px] text-amber-400 font-bold gap-1">
+                            <span>🏆</span><span id="game-player-rating">2150</span>
+                        </div>
+                    </div>
                 </div>
-                <span class="bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-amber-400 font-mono font-bold text-xs" id="player-clock">05:00</span>
+                <div class="bg-slate-950 px-2.5 py-1 rounded-xl border border-blue-500 text-white font-mono font-bold text-xs flex items-center gap-1 shadow">
+                    <span>⏱️</span><span id="player-clock">04:51</span>
+                </div>
             </div>
 
-            <!-- Center: VS -->
-            <span class="text-xs font-black text-white uppercase tracking-widest px-3">VS</span>
+            <!-- Center: RADIANT 3D GOLDEN VS -->
+            <div class="flex items-center justify-center">
+                <span class="text-base sm:text-lg font-black text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)] tracking-wider">VS</span>
+            </div>
 
             <!-- Right: OPPONENT Info -->
             <div class="flex items-center gap-2 sm:gap-3">
-                <span class="bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-sky-400 font-mono font-bold text-xs" id="opponent-clock">05:00</span>
-                <div class="flex items-center gap-1.5">
-                    <span class="font-black text-white text-xs sm:text-sm truncate max-w-[150px]" id="game-opponent-badge">OPPONENT: Magnus</span>
-                    <span class="text-slate-400 font-semibold text-xs" id="game-opponent-rating">2850</span>
+                <div class="bg-slate-950 px-2.5 py-1 rounded-xl border border-blue-500 text-white font-mono font-bold text-xs flex items-center gap-1 shadow">
+                    <span>⏱️</span><span id="opponent-clock">05:00</span>
                 </div>
-                <button onclick="toggleBoardThemeWeb()" class="text-emerald-400 hover:text-emerald-300 p-1.5 text-xs rounded-lg hover:bg-slate-800 transition" title="Toggle Board Theme">
-                    <i class="fa-solid fa-palette"></i>
+                <div class="text-right">
+                    <div class="font-black text-white text-xs sm:text-sm truncate max-w-[140px]" id="game-opponent-badge">Pragg_Future</div>
+                    <div class="flex items-center justify-end text-[10px] text-amber-400 font-bold gap-1">
+                        <span>🏆</span><span id="game-opponent-rating">2740</span>
+                    </div>
+                </div>
+                <div class="relative w-8 h-8 rounded-full border-2 border-amber-400 overflow-hidden bg-blue-950 shadow">
+                    <img src="assets/avatar_winner_1793081380198.jpg" alt="Opponent Avatar" class="w-full h-full object-cover">
+                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border border-black rounded-full"></span>
+                </div>
+                <button onclick="toggleBoardThemeWeb()" class="w-9 h-9 rounded-full bg-slate-950 border-2 border-blue-500 hover:border-amber-400 text-white flex items-center justify-center transition active:scale-95" title="Menu & Theme">
+                    <i class="fa-solid fa-bars text-xs"></i>
                 </button>
             </div>
         </div>
 
-        <!-- 5-Second Countdown Auto-Search Next Challenger Banner (upon winning online) -->
-        <div id="auto-search-banner" class="hidden bg-emerald-600 text-white text-center py-1.5 px-3 rounded-xl text-xs font-black animate-pulse mb-3 shadow-lg">
+        <!-- 5-Second Countdown Auto-Search Next Challenger Banner -->
+        <div id="auto-search-banner" class="hidden bg-blue-600 text-white text-center py-1.5 px-3 rounded-xl text-xs font-black animate-pulse mb-2 shadow-lg">
             ⚡ PANALO KA! Auto-searching next global challenger in <span id="auto-search-sec">5</span>s... 🌍
         </div>
 
-        <!-- 2. MAIN 16:9 DASHBOARD / GAME AREA (Ligtas sa Ads at Top Bar - BlueAccent Border) -->
-        <div class="flex-grow flex items-center justify-center mb-3">
-            <div class="w-full bg-slate-900 border-2 border-blue-500 rounded-3xl p-4 sm:p-6 shadow-2xl shadow-blue-500/10 grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+        <!-- 2. MAIN 16:9 GAME AREA: OVERSIZED CHESSBOARD + COMPACT RIGHT DASHBOARD -->
+        <div class="flex-grow flex items-center justify-center">
+            <div class="w-full bg-slate-950/80 border border-blue-900/60 rounded-3xl p-3 sm:p-5 shadow-2xl grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
                 
-                <!-- Left Pane: Match Info, Status & Controls -->
-                <div class="lg:col-span-4 flex flex-col gap-3">
-                    <div class="bg-slate-950 border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between text-xs">
-                        <span id="match-mode-label" class="text-amber-400 font-bold">Level 1: Scholar's Execution</span>
-                        <span id="player-side-label" class="bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-lg font-mono font-bold text-xs">White ⚪</span>
-                    </div>
-
-                    <div id="move-feedback" class="text-xs font-semibold text-slate-200 py-3 px-4 rounded-2xl bg-slate-950 border border-slate-800 text-center shadow-inner">
-                        I-move ang pyesa patungo sa checkmate. Movable in any direction.
-                    </div>
-
-                    <div class="flex gap-2.5">
-                        <button onclick="resetCurrentPuzzle()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-200 active:scale-95 shadow">
-                            <i class="fa-solid fa-rotate-right"></i> Reset
-                        </button>
-                        <button onclick="requestHintWeb()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 text-amber-400 active:scale-95 shadow">
-                            <i class="fa-solid fa-lightbulb"></i> Hint
-                        </button>
-                    </div>
-
-                    <!-- Quick Emotes -->
-                    <div class="grid grid-cols-4 gap-1.5 pt-1">
-                        <button onclick="sendWebEmote('WOW! 🤩')" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] py-1.5 rounded-lg text-slate-300 font-bold transition">WOW! 🤩</button>
-                        <button onclick="sendWebEmote('GG! 🤝')" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] py-1.5 rounded-lg text-slate-300 font-bold transition">GG! 🤝</button>
-                        <button onclick="sendWebEmote('GL! ✨')" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] py-1.5 rounded-lg text-slate-300 font-bold transition">GL! ✨</button>
-                        <button onclick="sendWebEmote('OOPS! 😅')" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] py-1.5 rounded-lg text-slate-300 font-bold transition">OOPS! 😅</button>
+                <!-- Left/Center: OVERSIZED TOURNAMENT CHESSBOARD (The Main Star) -->
+                <div class="lg:col-span-8 flex flex-col items-center justify-center">
+                    <div class="p-2 sm:p-3 bg-gradient-to-b from-slate-900 to-slate-950 rounded-3xl border-2 border-amber-400/90 shadow-[0_0_25px_rgba(245,158,11,0.25)]">
+                        <div id="board" style="width: 460px; max-width: 88vw;" class="rounded-xl overflow-hidden shadow-2xl border border-slate-800"></div>
                     </div>
                 </div>
 
-                <!-- Center/Right: Maximized Tournament Chessboard (Green & White Standard, Large Pieces) -->
-                <div class="lg:col-span-8 flex flex-col items-center justify-center">
-                    <div class="p-2 sm:p-3 bg-slate-950 rounded-3xl border-2 border-slate-800 shadow-2xl">
-                        <div id="board" style="width: 440px; max-width: 86vw;" class="rounded-2xl overflow-hidden shadow-2xl border border-slate-800"></div>
+                <!-- Right Pane: SAKANA RIGHT DASHBOARD -->
+                <div class="lg:col-span-4 flex flex-col gap-3">
+                    <!-- Mode & Turn Notation Card -->
+                    <div class="bg-slate-900 border border-blue-600/70 p-3.5 rounded-2xl flex flex-col gap-1 text-xs shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <span id="match-mode-label" class="text-sky-300 font-extrabold flex items-center gap-1.5">
+                                <i class="fa-solid fa-globe text-sky-400"></i> Online Match
+                            </span>
+                            <span id="player-side-label" class="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-[11px] font-bold">White ⚪</span>
+                        </div>
+                        <div id="move-feedback" class="text-[11px] font-semibold text-slate-300 mt-1">
+                            Your Turn: Move White
+                        </div>
+                        <div class="bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800 font-mono text-white text-xs font-bold mt-1">
+                            1. e4  e5
+                        </div>
                     </div>
+
+                    <!-- Watch Ad +1 Hint Card -->
+                    <button onclick="requestHintWeb()" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 border-2 border-sky-300 rounded-2xl p-2.5 flex items-center gap-3 text-left transition active:scale-95 shadow-lg shadow-blue-500/25">
+                        <div class="w-10 h-10 rounded-xl bg-blue-950/80 flex items-center justify-center text-xl">
+                            🎬
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-white uppercase tracking-wider">Watch Ad</div>
+                            <div class="text-sm font-black text-amber-300">+1 Hint</div>
+                            <div class="text-[10px] text-sky-200 font-bold">(10 per 24h)</div>
+                        </div>
+                    </button>
+
+                    <!-- 2x2 Grid: Undo, Redo, Hint, Settings -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="resetCurrentPuzzle()" class="bg-slate-900 hover:bg-slate-850 border border-blue-600/70 py-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center text-white active:scale-95">
+                            <i class="fa-solid fa-rotate-left text-sm text-sky-400 mb-0.5"></i> Undo
+                        </button>
+                        <button onclick="resetCurrentPuzzle()" class="bg-slate-900 hover:bg-slate-850 border border-blue-600/70 py-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center text-white active:scale-95">
+                            <i class="fa-solid fa-rotate-right text-sm text-sky-400 mb-0.5"></i> Redo
+                        </button>
+                        <button onclick="requestHintWeb()" class="bg-slate-900 hover:bg-slate-850 border border-blue-600/70 py-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center text-white active:scale-95">
+                            <i class="fa-solid fa-lightbulb text-sm text-amber-400 mb-0.5"></i> Hint
+                        </button>
+                        <button onclick="openOwnerSecurityModal()" class="bg-slate-900 hover:bg-slate-850 border border-blue-600/70 py-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center text-white active:scale-95">
+                            <i class="fa-solid fa-gear text-sm text-slate-300 mb-0.5"></i> Settings
+                        </button>
+                    </div>
+
+                    <!-- Full-Width Resign Button -->
+                    <button onclick="backToDashboard()" class="w-full bg-blue-600 hover:bg-blue-500 border border-sky-400 py-2.5 rounded-xl text-xs font-black text-white flex items-center justify-center gap-2 transition active:scale-95 shadow">
+                        <i class="fa-solid fa-flag"></i> Resign
+                    </button>
                 </div>
             </div>
         </div>
